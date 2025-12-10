@@ -182,6 +182,7 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
         kUnverifiedVersion = true;
       }
 
+      return; // Disable update notifications for now.
       if (currentReleaseVersion < latestStoreVersion) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('There is a new version available!'),

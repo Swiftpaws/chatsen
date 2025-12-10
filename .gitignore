@@ -19,3 +19,6 @@ ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage*
 !/analysis_options.yaml
 !/pubspec.yaml
 !/.gitignore
+
+# FVM Version Cache
+.fvm/

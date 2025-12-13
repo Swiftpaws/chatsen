@@ -440,7 +440,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 4.0),
                     child: Text(
                       '${entryGroup.key}',
-                      style: Theme.of(context).textTheme.button!.copyWith(color: Theme.of(context).colorScheme.primary),
+                      style: Theme.of(context).textTheme.labelLarge!.copyWith(color: Theme.of(context).colorScheme.primary),
                     ),
                   ),
                   for (var entry in entryGroup.value) entry,
@@ -505,7 +505,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               padding: const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 'Settings',
-                                style: Theme.of(context).textTheme.headline4!.copyWith(
+                                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                                       color: Theme.of(context).colorScheme.onSurface,
                                     ),
                               ),
@@ -580,12 +580,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                   children: [
                                     Text(
                                       'Chatsen is currently work-in-progress!',
-                                      style: Theme.of(context).textTheme.subtitle1,
+                                      style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     SizedBox(height: 2.0),
                                     Text(
                                       'Create an issue on GitHub or ask on Discord if you encounter a problem.',
-                                      style: Theme.of(context).textTheme.subtitle2,
+                                      style: Theme.of(context).textTheme.titleSmall,
                                     ),
                                     SizedBox(height: 4.0),
                                     Text(
@@ -627,12 +627,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                   children: [
                                     Text(
                                       'Chatsen is looking for translators!',
-                                      style: Theme.of(context).textTheme.subtitle1,
+                                      style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     SizedBox(height: 2.0),
                                     Text(
                                       'Join the Discord server if you are interested in translating Chatsen to your language.',
-                                      style: Theme.of(context).textTheme.subtitle2,
+                                      style: Theme.of(context).textTheme.titleSmall,
                                     ),
                                   ],
                                 ),

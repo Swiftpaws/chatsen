@@ -30,7 +30,7 @@ class SetupModal extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Welcome to Chatsen!', style: Theme.of(context).textTheme.headline5),
+                        Text('Welcome to Chatsen!', style: Theme.of(context).textTheme.headlineSmall),
                         Text('Before getting started, please review the following settings.'),
                       ],
                     ),

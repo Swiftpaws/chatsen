@@ -327,7 +327,7 @@ class ChatMessage extends StatelessWidget {
         color: message.mention ? Theme.of(context).colorScheme.primary.withAlpha(48) : backgroundColor,
         child: InkWell(
           onDoubleTap: () async {
-            await Clipboard.setData(ClipboardData(text: message.body));
+            await Clipboard.setData(ClipboardData(text: message.body ?? ''));
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 behavior: SnackBarBehavior.floating,
@@ -342,7 +342,7 @@ class ChatMessage extends StatelessWidget {
             );
           },
           onLongPress: () async {
-            await Clipboard.setData(ClipboardData(text: message.body));
+            await Clipboard.setData(ClipboardData(text: message.body ?? ''));
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 behavior: SnackBarBehavior.floating,

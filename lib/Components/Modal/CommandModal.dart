@@ -1,15 +1,9 @@
-import 'dart:convert';
-
 import '/Commands/Command.dart';
 import '/Commands/CommandsCubit.dart';
 import '/Components/UI/BlurModal.dart';
 import '/Components/UI/Tile.dart';
-import 'package:file_picker_cross/file_picker_cross.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart' as http;
-import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
 
 class CommandModal extends StatefulWidget {
   final Command? command;

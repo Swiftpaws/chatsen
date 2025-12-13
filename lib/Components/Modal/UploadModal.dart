@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '/Components/UI/BlurModal.dart';
-import 'package:file_picker_cross/file_picker_cross.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart' as http;
 import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
 
 class UploadModal extends StatelessWidget {
@@ -50,18 +50,20 @@ class UploadModal extends StatelessWidget {
     // x-ms-wmv
   ];
 
-  final FilePickerCross file;
+  final Uint8List bytes;
+  final String fileName;
   final twitch.Channel channel;
 
   const UploadModal({
     Key? key,
-    required this.file,
+    required this.bytes,
+    required this.fileName,
     required this.channel,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    var lowName = file.fileName!.toLowerCase();
+    var lowName = fileName.toLowerCase();
     var extension = lowName.contains('.') ? lowName.split('.').last : '';
 
     return Padding(
@@ -73,14 +75,14 @@ class UploadModal extends StatelessWidget {
         // shrinkWrap: true,
         children: [
           Text(
-            'You are about to upload ${file.fileName} and share the link in ${channel.name}',
-            style: Theme.of(context).textTheme.headline6,
+            'You are about to upload $fileName and share the link in ${channel.name}',
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           SizedBox(height: 16.0),
           if (imageExtensions.contains(extension)) ...[
             Container(
               constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
-              child: Image.memory(file.toUint8List()),
+              child: Image.memory(bytes),
             ),
             SizedBox(height: 16.0),
           ],
@@ -97,8 +99,8 @@ class UploadModal extends StatelessWidget {
                       request.files.add(
                         http.MultipartFile.fromBytes(
                           'image',
-                          file.toUint8List(),
-                          filename: '${file.fileName}',
+                          bytes,
+                          filename: fileName,
                         ),
                       );
                       var response = await request.send();
@@ -126,8 +128,8 @@ class UploadModal extends StatelessWidget {
                         request.files.add(
                           http.MultipartFile.fromBytes(
                             'fileToUpload',
-                            file.toUint8List(),
-                            filename: '${file.fileName}',
+                              bytes,
+                              filename: fileName,
                           ),
                           // file.toMultipartFile(filename: 'file.png'),
                         );
@@ -170,11 +172,23 @@ class UploadModal extends StatelessWidget {
     required twitch.Channel channel,
   }) async {
     try {
-      var selectedFile = await FilePickerCross.importFromStorage(type: Platform.isIOS ? FileTypeCross.image : FileTypeCross.any);
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: Platform.isIOS ? FileType.image : FileType.any,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final picked = result.files.single;
+      final pickedBytes = picked.bytes ?? (picked.path != null ? await File(picked.path!).readAsBytes() : null);
+      if (pickedBytes == null) return;
+
       await BlurModal.show(
         context: context,
         child: UploadModal(
-          file: selectedFile,
+          bytes: pickedBytes,
+          fileName: picked.name,
           channel: channel,
         ),
       );

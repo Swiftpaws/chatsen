@@ -14,7 +14,7 @@ enum _UploadPickSource {
   file,
 }
 
-class UploadModal extends StatelessWidget {
+class UploadModal extends StatefulWidget {
   // if (lowName.endsWith('.png') || lowName.endsWith('.jpg') || lowName.endsWith('.jpeg') || lowName.endsWith('.apng') || lowName.endsWith('.gif') || lowName.endsWith('.webp'))
 
   // Optional: set this to enable Imgur uploads.
@@ -75,141 +75,8 @@ class UploadModal extends StatelessWidget {
     required this.messenger,
   }) : super(key: key);
 
-  void _closeThenSnack(String message) {
-    navigator.pop();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      messenger.showSnackBar(SnackBar(content: Text(message)));
-    });
-  }
-
   @override
-  Widget build(BuildContext context) {
-    var lowName = fileName.toLowerCase();
-    var extension = lowName.contains('.') ? lowName.split('.').last : '';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        // mainAxisSize: MainAxisSize.max,
-        // crossAxisAlignment: CrossAxisAlignment.start,
-        // shrinkWrap: true,
-        children: [
-          Text(
-            'You are about to upload $fileName and share the link in ${channel.name}',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          SizedBox(height: 16.0),
-          if (imageExtensions.contains(extension)) ...[
-            Container(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
-              child: Image.memory(bytes),
-            ),
-            SizedBox(height: 16.0),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                if (imgurExtensions.contains(extension)) ...[
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      if (imgurClientId.isEmpty) {
-                        _closeThenSnack('Imgur upload is not configured (missing Client-ID).');
-                        return;
-                      }
-
-                      navigator.pop();
-
-                      var request = http.MultipartRequest('POST', Uri.parse('https://api.imgur.com/3/upload'));
-                      request.headers['Authorization'] = 'Client-ID $imgurClientId';
-                      request.files.add(
-                        http.MultipartFile.fromBytes(
-                          'image',
-                          bytes,
-                          filename: fileName,
-                        ),
-                      );
-                      var response = await request.send();
-                      var responseBody = await response.stream.bytesToString();
-                      var responseJson = jsonDecode(responseBody);
-                      if (response.statusCode == 200) {
-                        channel.send(responseJson['data']['link']);
-                      } else {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          messenger.showSnackBar(
-                            SnackBar(content: Text('Imgur upload failed (${response.statusCode}).')),
-                          );
-                        });
-                      }
-                      print('Upload: $responseBody');
-                    },
-                    label: Text('imgur'),
-                    icon: Icon(Icons.upload),
-                    style: ButtonStyle(
-                      padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
-                      shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
-                    ),
-                  ),
-                  SizedBox(width: 12.0),
-                ],
-                Expanded(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        navigator.pop();
-                        var request = http.MultipartRequest('POST', Uri.parse('https://catbox.moe/user/api.php'));
-                        request.files.add(
-                          http.MultipartFile.fromBytes(
-                            'fileToUpload',
-                              bytes,
-                              filename: fileName,
-                          ),
-                          // file.toMultipartFile(filename: 'file.png'),
-                        );
-                        request.fields['reqtype'] = 'fileupload';
-                        var response = await request.send();
-                        var responseBody = await response.stream.bytesToString();
-                        if (response.statusCode == 200) {
-                          channel.send(responseBody);
-                        } else {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            messenger.showSnackBar(
-                              SnackBar(content: Text('catbox upload failed (${response.statusCode}).')),
-                            );
-                          });
-                        }
-                        print('Upload: $responseBody');
-                      },
-                      label: Text('catbox.moe'),
-                      icon: Icon(Icons.upload),
-                      style: ButtonStyle(
-                        padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
-                        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12.0),
-                IconButton(
-                  onPressed: () async => Navigator.of(context).pop(),
-                  // label: Text('Cancel'),
-                  icon: Icon(Icons.cancel),
-                  // style: ButtonStyle(
-                  //   padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
-                  //   shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
-                  // ),
-                ),
-                SizedBox(width: 12.0),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  State<UploadModal> createState() => _UploadModalState();
 
   static Future<void> show(
     BuildContext context, {
@@ -303,4 +170,178 @@ class UploadModal extends StatelessWidget {
       print(e);
     }
   }
+}
+
+class _UploadModalState extends State<UploadModal> {
+  bool _isUploading = false;
+  String? _uploadingTo;
+
+  void _closeThenSnack(String message) {
+    widget.navigator.pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.messenger.showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
+
+  Future<void> _runUpload(String target, Future<void> Function() action) async {
+    if (_isUploading) return;
+    setState(() {
+      _isUploading = true;
+      _uploadingTo = target;
+    });
+
+    try {
+      await action();
+    } catch (e) {
+      _closeThenSnack('Upload failed: $e');
+      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadingTo = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var lowName = widget.fileName.toLowerCase();
+    var extension = lowName.contains('.') ? lowName.split('.').last : '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        // mainAxisSize: MainAxisSize.max,
+        // crossAxisAlignment: CrossAxisAlignment.start,
+        // shrinkWrap: true,
+        children: [
+          Text(
+            'You are about to upload ${widget.fileName} and share the link in ${widget.channel.name}',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          if (_isUploading) ...[
+            SizedBox(height: 12.0),
+            LinearProgressIndicator(),
+            SizedBox(height: 8.0),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _uploadingTo != null ? 'Uploading to $_uploadingTo…' : 'Uploading…',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ],
+          SizedBox(height: 16.0),
+          if (UploadModal.imageExtensions.contains(extension)) ...[
+            Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+              child: Image.memory(widget.bytes),
+            ),
+            SizedBox(height: 16.0),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                if (UploadModal.imgurExtensions.contains(extension)) ...[
+                  ElevatedButton.icon(
+                    onPressed: _isUploading
+                        ? null
+                        : () async {
+                            if (UploadModal.imgurClientId.isEmpty) {
+                              _closeThenSnack('Imgur upload is not configured (missing Client-ID).');
+                              return;
+                            }
+
+                            await _runUpload('imgur', () async {
+                              var request = http.MultipartRequest('POST', Uri.parse('https://api.imgur.com/3/upload'));
+                              request.headers['Authorization'] = 'Client-ID ${UploadModal.imgurClientId}';
+                              request.files.add(
+                                http.MultipartFile.fromBytes(
+                                  'image',
+                                  widget.bytes,
+                                  filename: widget.fileName,
+                                ),
+                              );
+                              var response = await request.send();
+                              var responseBody = await response.stream.bytesToString();
+                              var responseJson = jsonDecode(responseBody);
+                              if (response.statusCode == 200) {
+                                widget.channel.send(responseJson['data']['link']);
+                                widget.navigator.pop();
+                              } else {
+                                _closeThenSnack('Imgur upload failed (${response.statusCode}).');
+                              }
+                              print('Upload: $responseBody');
+                            });
+                          },
+                    label: Text('imgur'),
+                    icon: Icon(Icons.upload),
+                    style: ButtonStyle(
+                      padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
+                      shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
+                    ),
+                  ),
+                  SizedBox(width: 12.0),
+                ],
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploading
+                          ? null
+                          : () async {
+                              await _runUpload('catbox.moe', () async {
+                                var request = http.MultipartRequest('POST', Uri.parse('https://catbox.moe/user/api.php'));
+                                request.files.add(
+                                  http.MultipartFile.fromBytes(
+                                    'fileToUpload',
+                                    widget.bytes,
+                                    filename: widget.fileName,
+                                  ),
+                                );
+                                request.fields['reqtype'] = 'fileupload';
+                                var response = await request.send();
+                                var responseBody = await response.stream.bytesToString();
+                                if (response.statusCode == 200) {
+                                  widget.channel.send(responseBody);
+                                  widget.navigator.pop();
+                                } else {
+                                  _closeThenSnack('catbox upload failed (${response.statusCode}).');
+                                }
+                                print('Upload: $responseBody');
+                              });
+                            },
+                      label: Text('catbox.moe'),
+                      icon: Icon(Icons.upload),
+                      style: ButtonStyle(
+                        padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
+                        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.0),
+                IconButton(
+                  onPressed: _isUploading ? null : () async => Navigator.of(context).pop(),
+                  // label: Text('Cancel'),
+                  icon: Icon(Icons.cancel),
+                  // style: ButtonStyle(
+                  //   padding: MaterialStateProperty.all(EdgeInsets.all(16.0)),
+                  //   shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(32.0))),
+                  // ),
+                ),
+                SizedBox(width: 12.0),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

@@ -402,6 +402,38 @@ class ChatMessage extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 children: <InlineSpan>[
+                      if ((message.replyParentMsgId?.isNotEmpty ?? false) ||
+                          (message.replyParentMsgBody?.isNotEmpty ?? false) ||
+                          (message.replyParentDisplayName?.isNotEmpty ??
+                              false) ||
+                          (message.replyParentUserLogin?.isNotEmpty ?? false))
+                        TextSpan(
+                          text: () {
+                            final who = (message.replyParentDisplayName
+                                        ?.trim()
+                                        .isNotEmpty ??
+                                    false)
+                                ? message.replyParentDisplayName!.trim()
+                                : (message.replyParentUserLogin
+                                            ?.trim()
+                                            .isNotEmpty ??
+                                        false)
+                                    ? message.replyParentUserLogin!.trim()
+                                    : 'unknown';
+                            var snippet = (message.replyParentMsgBody ?? '')
+                                .replaceAll('\n', ' ')
+                                .trim();
+                            if (snippet.length > 120)
+                              snippet = '${snippet.substring(0, 120)}…';
+                            if (snippet.isEmpty) snippet = '…';
+                            return '↪ Reply to $who: $snippet\n';
+                          }(),
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            shadows: shadows,
+                            color: Colors.grey[400],
+                          ),
+                        ),
                       if (prefixText != null)
                         TextSpan(
                           text: '$prefixText ',

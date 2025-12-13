@@ -166,6 +166,20 @@ class Message {
   String? id;
   String? body;
 
+  /// Twitch message reply metadata (IRC tags).
+  ///
+  /// See tags like: reply-parent-msg-id, reply-parent-display-name,
+  /// reply-parent-msg-body.
+  String? replyParentMsgId;
+  String? replyParentUserLogin;
+  String? replyParentDisplayName;
+  String? replyParentMsgBody;
+
+  String? replyThreadParentMsgId;
+  String? replyThreadParentUserLogin;
+  String? replyThreadParentDisplayName;
+  String? replyThreadParentMsgBody;
+
   bool action = false;
   bool mention = false;
   bool blocked = false;
@@ -186,6 +200,14 @@ class Message {
     this.user,
     this.id,
     this.body,
+    this.replyParentMsgId,
+    this.replyParentUserLogin,
+    this.replyParentDisplayName,
+    this.replyParentMsgBody,
+    this.replyThreadParentMsgId,
+    this.replyThreadParentUserLogin,
+    this.replyThreadParentDisplayName,
+    this.replyThreadParentMsgBody,
     this.dateTime,
     this.history = false,
   }) : _tagBadges = tagBadges ?? '' {
@@ -445,6 +467,16 @@ class Channel {
         ),
         id: message.tags['id'],
         body: message.parameters[1],
+        replyParentMsgId: message.tags['reply-parent-msg-id'],
+        replyParentUserLogin: message.tags['reply-parent-user-login'],
+        replyParentDisplayName: message.tags['reply-parent-display-name'],
+        replyParentMsgBody: message.tags['reply-parent-msg-body'],
+        replyThreadParentMsgId: message.tags['reply-thread-parent-msg-id'],
+        replyThreadParentUserLogin:
+            message.tags['reply-thread-parent-user-login'],
+        replyThreadParentDisplayName:
+            message.tags['reply-thread-parent-display-name'],
+        replyThreadParentMsgBody: message.tags['reply-thread-parent-msg-body'],
         tagBadges: message.tags['badges'],
         tagEmotes: message.tags['emotes'],
         dateTime: DateTime.fromMillisecondsSinceEpoch(
@@ -1023,6 +1055,17 @@ class Connection {
           ),
           id: message.tags['id'],
           body: message.parameters[1],
+          replyParentMsgId: message.tags['reply-parent-msg-id'],
+          replyParentUserLogin: message.tags['reply-parent-user-login'],
+          replyParentDisplayName: message.tags['reply-parent-display-name'],
+          replyParentMsgBody: message.tags['reply-parent-msg-body'],
+          replyThreadParentMsgId: message.tags['reply-thread-parent-msg-id'],
+          replyThreadParentUserLogin:
+              message.tags['reply-thread-parent-user-login'],
+          replyThreadParentDisplayName:
+              message.tags['reply-thread-parent-display-name'],
+          replyThreadParentMsgBody:
+              message.tags['reply-thread-parent-msg-body'],
           tagBadges: message.tags['badges'],
           tagEmotes: message.tags['emotes'],
         );

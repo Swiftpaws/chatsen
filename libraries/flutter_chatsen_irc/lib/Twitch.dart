@@ -25,7 +25,8 @@ class Emote {
   final String? provider;
   final String? set;
   final List<String?>? mipmap;
-  final bool zeroWidth; // Flag set/Bitfield would be better, for chatsen2 Copesen
+  final bool
+      zeroWidth; // Flag set/Bitfield would be better, for chatsen2 Copesen
   final String? alt;
 
   Emote({
@@ -171,22 +172,23 @@ class Message {
   bool history = false; // TODO: Use a bitfield
   bool deleted = false;
 
-  List<Badge> badges = [];
+  final String _tagBadges;
+  final List<Badge> _resolvedBadges = [];
   List<MessageToken> tokens = [];
   List<TwitchEmote> twitchEmotes = [];
 
   DateTime? dateTime;
 
   Message({
-    String tagBadges = '',
-    String tagEmotes = '',
+    String? tagBadges,
+    String? tagEmotes,
     this.channel,
     this.user,
     this.id,
     this.body,
     this.dateTime,
     this.history = false,
-  }) {
+  }) : _tagBadges = tagBadges ?? '' {
     // replace U+200D (ZERO WIDTH JOINER) with U+E0002
     // alternative regex for replacement: (?<!\U000E0002)\U000E0002
     var replacement = String.fromCharCodes(Runes('\u{e0002}'));
@@ -198,17 +200,15 @@ class Message {
 
     // body = body!.replaceAll(utf8.decode([0xF3, 0xA0, 0x80, 0x80]), '');
 
-    for (var tagBadge in tagBadges.split(',')) {
-      var badge = channel?.badges?.firstWhere((badge) => badge!.tag == tagBadge, orElse: () => channel!.client!.badges.firstWhereOrNull((badge) => badge.tag == tagBadge));
-      if (badge != null) badges.add(badge);
-    }
+    final safeTagEmotes = tagEmotes ?? '';
 
-    for (var tagEmote in tagEmotes.split('/')) {
+    for (var tagEmote in safeTagEmotes.split('/')) {
       var tagEmoteDetails = tagEmote.split(':');
       if (tagEmoteDetails.length < 2) continue;
       var tagEmoteId = tagEmoteDetails.first;
       var tagEmotePositions = tagEmoteDetails.last.split(',');
-      for (var tagEmotePosition in tagEmotePositions.map((tagEmotePosition) => tagEmotePosition.split('-'))) {
+      for (var tagEmotePosition in tagEmotePositions
+          .map((tagEmotePosition) => tagEmotePosition.split('-'))) {
         twitchEmotes.add(
           TwitchEmote(
             id: tagEmoteId,
@@ -219,7 +219,8 @@ class Message {
       }
     }
 
-    twitchEmotes.sort((item, item2) => item2.startPosition!.compareTo(item.startPosition!));
+    twitchEmotes.sort(
+        (item, item2) => item2.startPosition!.compareTo(item.startPosition!));
 
     try {
       tokens = tokenize(body!);
@@ -228,6 +229,32 @@ class Message {
     }
 
     dateTime = dateTime ?? DateTime.now();
+  }
+
+  /// Resolves Twitch-native badges (mod/sub/vip/etc.) from IRC tag strings.
+  ///
+  /// This is intentionally lazy so badges still appear on messages received
+  /// before global/channel badge sets have finished loading.
+  List<Badge> get badges {
+    _resolvedBadges.clear();
+
+    final tagBadges = _tagBadges.trim();
+    if (tagBadges.isEmpty) return _resolvedBadges;
+
+    final channelBadges = channel?.badges;
+    final globalBadges = channel?.client?.badges;
+
+    for (final tagBadge in tagBadges.split(',')) {
+      if (tagBadge.isEmpty) continue;
+
+      final badge =
+          channelBadges?.firstWhereOrNull((b) => b?.tag == tagBadge) ??
+              globalBadges?.firstWhereOrNull((b) => b.tag == tagBadge);
+
+      if (badge != null) _resolvedBadges.add(badge);
+    }
+
+    return _resolvedBadges;
   }
 
   // TOOD: Needs a rework, maybe use "Type is Type" instead of wrappers with enum
@@ -247,14 +274,26 @@ class Message {
 
     var runes = body.runes.toList();
     for (var twitchEmote in twitchEmotes) {
-      runes.replaceRange(twitchEmote.startPosition!, twitchEmote.endPosition! + 1, utf8.encode(' ${twitchEmote.id}|${String.fromCharCodes(runes.getRange(twitchEmote.startPosition!, twitchEmote.endPosition! + 1))} '));
+      runes.replaceRange(
+          twitchEmote.startPosition!,
+          twitchEmote.endPosition! + 1,
+          utf8.encode(
+              ' ${twitchEmote.id}|${String.fromCharCodes(runes.getRange(twitchEmote.startPosition!, twitchEmote.endPosition! + 1))} '));
     }
 
-    var runeBody = String.fromCharCodes(runes).replaceAll(utf8.decode([0xF3, 0xA0, 0x80, 0x80]), '');
+    var runeBody = String.fromCharCodes(runes)
+        .replaceAll(utf8.decode([0xF3, 0xA0, 0x80, 0x80]), '');
 
     var splits = runeBody.split(' ').where((split) => split.isNotEmpty);
     mention = splits.any(
-      (split) => (split.toLowerCase() == '${channel?.receiver?.credentials?.login.toLowerCase()}' || split.toLowerCase() == '@${channel?.receiver?.credentials?.login.toLowerCase()}' || split.toLowerCase() == '${channel?.receiver?.credentials?.login.toLowerCase()},' || split.toLowerCase() == '@${channel?.receiver?.credentials?.login.toLowerCase()},'),
+      (split) => (split.toLowerCase() ==
+              '${channel?.receiver?.credentials?.login.toLowerCase()}' ||
+          split.toLowerCase() ==
+              '@${channel?.receiver?.credentials?.login.toLowerCase()}' ||
+          split.toLowerCase() ==
+              '${channel?.receiver?.credentials?.login.toLowerCase()},' ||
+          split.toLowerCase() ==
+              '@${channel?.receiver?.credentials?.login.toLowerCase()},'),
     );
 
     for (var messageSplit in splits) {
@@ -277,23 +316,37 @@ class Message {
         );
       }
 
-      var channelEmote = channel?.emotes.firstWhereOrNull((emote) => (emote.alt ?? emote.name) == messageSplit);
-      var globalEmote = client?.emotes.firstWhereOrNull((emote) => (emote.alt ?? emote.name) == messageSplit);
-      var emojiEmote = client?.emojis.firstWhereOrNull((emote) => (emote.alt ?? emote.name) == messageSplit);
+      var channelEmote = channel?.emotes.firstWhereOrNull(
+          (emote) => (emote.alt ?? emote.name) == messageSplit);
+      var globalEmote = client?.emotes.firstWhereOrNull(
+          (emote) => (emote.alt ?? emote.name) == messageSplit);
+      var emojiEmote = client?.emojis.firstWhereOrNull(
+          (emote) => (emote.alt ?? emote.name) == messageSplit);
       var emote = twitchEmote ?? channelEmote ?? globalEmote ?? emojiEmote;
       var lowSplit = messageSplit.toLowerCase();
 
       if (lowSplit.startsWith('http://') || lowSplit.startsWith('https://')) {
-        if (lowSplit.endsWith('.png') || lowSplit.endsWith('.jpg') || lowSplit.endsWith('.jpeg') || lowSplit.endsWith('.apng') || lowSplit.endsWith('.gif') || lowSplit.endsWith('.webp')) {
+        if (lowSplit.endsWith('.png') ||
+            lowSplit.endsWith('.jpg') ||
+            lowSplit.endsWith('.jpeg') ||
+            lowSplit.endsWith('.apng') ||
+            lowSplit.endsWith('.gif') ||
+            lowSplit.endsWith('.webp')) {
           tokens.add(MessageToken.image(messageSplit));
         } else {
           tokens.add(MessageToken.link(messageSplit));
         }
       } else if (emote != null) {
-        bool isZeroWidth = (zeroWidthEmotes.contains(emote.name) || emote.zeroWidth);
-        if (tokens.isNotEmpty && tokens.last.type == MessageTokenType.Emote && isZeroWidth) {
-          tokens.last = MessageToken.emoteStack([tokens.last.data as Emote, emote]);
-        } else if (tokens.isNotEmpty && tokens.last.type == MessageTokenType.EmoteStack && isZeroWidth) {
+        bool isZeroWidth =
+            (zeroWidthEmotes.contains(emote.name) || emote.zeroWidth);
+        if (tokens.isNotEmpty &&
+            tokens.last.type == MessageTokenType.Emote &&
+            isZeroWidth) {
+          tokens.last =
+              MessageToken.emoteStack([tokens.last.data as Emote, emote]);
+        } else if (tokens.isNotEmpty &&
+            tokens.last.type == MessageTokenType.EmoteStack &&
+            isZeroWidth) {
           (tokens.last.data as List<Emote>).add(emote);
         } else {
           tokens.add(MessageToken.emote(emote));
@@ -338,25 +391,29 @@ class Channel {
 
     state = newState;
 
-    client!.listeners.forEach((listener) => listener.onChannelStateChange(this, state));
+    client!.listeners
+        .forEach((listener) => listener.onChannelStateChange(this, state));
   }
 
   Future<void> loadHistory() async {
     if (!client!.useRecentMessages) {
       var chatMessage = Message(
         channel: this,
-        body: 'Chat history is disabled because you have opted-out. Head over to Chatsen\'s settings if you wish to turn it on.',
+        body:
+            'Chat history is disabled because you have opted-out. Head over to Chatsen\'s settings if you wish to turn it on.',
         dateTime: DateTime.now(),
       );
 
       messages.add(chatMessage);
-      if (messages.length > 1000) messages.removeRange(0, messages.length - 1000);
+      if (messages.length > 1000)
+        messages.removeRange(0, messages.length - 1000);
       client!.listeners.forEach((listener) => listener.onHistoryLoaded(this));
       return;
     }
 
     // https://recent-messages.robotty.de/api/v2/recent-messages/
-    var response = await http.get(Uri.parse('https://recent-messages.robotty.de/api/v2/recent-messages/${name!.substring(1)}'));
+    var response = await http.get(Uri.parse(
+        'https://recent-messages.robotty.de/api/v2/recent-messages/${name!.substring(1)}'));
     var jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
 
     for (var raw in jsonResponse['messages'] ?? []) {
@@ -381,13 +438,19 @@ class Channel {
           login: message.prefix.split('!').first.toLowerCase(),
           displayName: message.tags['display-name'],
           id: int.tryParse(message.tags['user-id'] ?? '0'),
-          color: (message.tags['color'] == null || message.tags['color'].trim().isEmpty ? null : message.tags['color'].substring(1)),
+          color: (message.tags['color'] == null ||
+                  message.tags['color'].trim().isEmpty
+              ? null
+              : message.tags['color'].substring(1)),
         ),
         id: message.tags['id'],
         body: message.parameters[1],
         tagBadges: message.tags['badges'],
         tagEmotes: message.tags['emotes'],
-        dateTime: DateTime.fromMillisecondsSinceEpoch(int.tryParse(message.tags['tmi-sent-ts']) ?? int.tryParse(message.tags['rm-received-ts']) ?? 0),
+        dateTime: DateTime.fromMillisecondsSinceEpoch(
+            int.tryParse(message.tags['tmi-sent-ts']) ??
+                int.tryParse(message.tags['rm-received-ts']) ??
+                0),
       );
 
       users.putIfAbsent('users', () => []);
@@ -396,8 +459,10 @@ class Channel {
           users['users']!.add(chatMessage.user!.login!);
       }
 
-      if (messages.none((element) => element.id == chatMessage.id)) messages.add(chatMessage);
-      if (messages.length > 1000) messages.removeRange(0, messages.length - 1000);
+      if (messages.none((element) => element.id == chatMessage.id))
+        messages.add(chatMessage);
+      if (messages.length > 1000)
+        messages.removeRange(0, messages.length - 1000);
     }
 
     client!.listeners.forEach((listener) => listener.onHistoryLoaded(this));
@@ -466,30 +531,96 @@ class Channel {
   Future<void> updateBadges() async {
     badges.clear();
 
-    try {
-      var request = await http.get(
-        Uri.parse('https://api.twitch.tv/helix/chat/badges?broadcaster_id=$id'), // https://badges.twitch.tv/v1/badges/channels/$id/display?language=en
-        headers: {
-          'Client-ID': client!.credentials.clientId!,
-          'Authorization': 'Bearer ${client!.credentials.token}',
-        },
-      );
-      var jsonRequest = jsonDecode(request.body);
+    List<Badge> parsed = [];
 
-      for (var categories in jsonRequest['data']) {
-        for (var badgeData in categories['versions']) {
-          badges.add(
-            Badge.fromJson(
-              categories['set_id'],
-              badgeData['id'],
-              badgeData,
-            ),
-          );
+    // Prefer Helix when credentials are present, but fall back to the public
+    // badges.twitch.tv endpoint so badges work for anonymous users too.
+    final normalizedToken =
+        client?.credentials.token?.replaceFirst(RegExp(r'^oauth:'), '').trim();
+
+    final hasHelixAuth = (client?.credentials.clientId?.isNotEmpty ?? false) &&
+        (normalizedToken?.isNotEmpty ?? false);
+
+    if (hasHelixAuth) {
+      try {
+        final request = await http.get(
+          Uri.parse(
+              'https://api.twitch.tv/helix/chat/badges?broadcaster_id=$id'),
+          headers: {
+            'Client-ID': client!.credentials.clientId!,
+            'Authorization': 'Bearer $normalizedToken',
+          },
+        ).timeout(const Duration(seconds: 10));
+
+        if (request.statusCode != 200) {
+          final bodyPreview = request.body.length > 300
+              ? '${request.body.substring(0, 300)}…'
+              : request.body;
+          print(
+              'Helix channel badges failed ($id): ${request.statusCode} $bodyPreview');
+          return;
         }
+        final jsonRequest = jsonDecode(request.body);
+        if (jsonRequest is Map<String, dynamic>) {
+          final data = jsonRequest['data'];
+          if (data is Iterable) {
+            for (final categories in data) {
+              if (categories is! Map<String, dynamic>) continue;
+              final versions = categories['versions'];
+              if (versions is! Iterable) continue;
+              for (final badgeData in versions) {
+                if (badgeData is! Map<String, dynamic>) continue;
+                parsed.add(
+                  Badge.fromJson(
+                    categories['set_id']?.toString(),
+                    badgeData['id']?.toString(),
+                    badgeData,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Helix channel badges exception ($id): $e');
+        return;
       }
-    } catch (e) {
-      print('Couldn\'t load Twitch badges for channel $id');
     }
+
+    // Only fall back for anonymous/no-auth mode. For logged-in mode we prefer
+    // surfacing Helix errors rather than silently switching endpoints.
+    if (!hasHelixAuth && parsed.isEmpty) {
+      try {
+        final request = await http
+            .get(
+              Uri.parse(
+                  'https://badges.twitch.tv/v1/badges/channels/$id/display?language=en'),
+            )
+            .timeout(const Duration(seconds: 10));
+        final jsonRequest = jsonDecode(request.body);
+        if (jsonRequest is Map<String, dynamic>) {
+          final badgeSets =
+              (jsonRequest['badge_sets'] as Map<String, dynamic>? ?? const {});
+
+          for (final entry in badgeSets.entries) {
+            final setId = entry.key;
+            final setValue = entry.value as Map<String, dynamic>?;
+            final versions =
+                (setValue?['versions'] as Map<String, dynamic>? ?? const {});
+            for (final versionEntry in versions.entries) {
+              final versionId = versionEntry.key;
+              final versionValue = versionEntry.value;
+              if (versionValue is! Map<String, dynamic>) continue;
+              parsed.add(Badge.fromJson(setId, versionId, versionValue));
+            }
+          }
+        }
+      } catch (_) {
+        // Intentionally swallow; empty badge list is acceptable.
+      }
+    }
+
+    badges.addAll(parsed);
   }
 
   // TODO: Rework this
@@ -497,7 +628,8 @@ class Channel {
     emotes.clear();
 
     try {
-      var emotesRequest = await http.get(Uri.parse('https://api.frankerfacez.com/v1/room/id/$id'));
+      var emotesRequest = await http
+          .get(Uri.parse('https://api.frankerfacez.com/v1/room/id/$id'));
       var jsonRequest = jsonDecode(emotesRequest.body);
 
       for (var emoteSetEntry in jsonRequest['sets'].entries) {
@@ -508,7 +640,8 @@ class Channel {
             // id: emoteData['id'], // TODO: Fix implementation
             provider: 'FFZ',
             mipmap: [
-              for (var url in emoteData['urls'].values) url.startsWith('http') ? url : 'https:$url',
+              for (var url in emoteData['urls'].values)
+                url.startsWith('http') ? url : 'https:$url',
             ],
           );
 
@@ -520,10 +653,12 @@ class Channel {
     }
 
     try {
-      var emotesRequest = await http.get(Uri.parse('https://api.betterttv.net/3/cached/users/twitch/$id'));
+      var emotesRequest = await http.get(
+          Uri.parse('https://api.betterttv.net/3/cached/users/twitch/$id'));
       var jsonRequest = jsonDecode(emotesRequest.body);
 
-      for (var emoteData in ((jsonRequest['sharedEmotes'] ?? []) + (jsonRequest['channelEmotes'] ?? []))) {
+      for (var emoteData in ((jsonRequest['sharedEmotes'] ?? []) +
+          (jsonRequest['channelEmotes'] ?? []))) {
         var emote = Emote(
           name: emoteData['code'],
           id: emoteData['id'],
@@ -557,11 +692,14 @@ class Channel {
       //   }
       // ''');
 
-      final response = await http.get(Uri.parse('https://7tv.io/v3/users/twitch/$id'));
+      final response =
+          await http.get(Uri.parse('https://7tv.io/v3/users/twitch/$id'));
       final responseJson = json.decode(utf8.decode(response.bodyBytes));
 
-      for (var emoteData in responseJson['emote_set']['emotes'] ?? responseJson['emote_set']['emote']) {
-        final emoteUrls = List<dynamic>.from(emoteData['data']['host']['files']).where((x) => x['format'].toUpperCase() == 'WEBP');
+      for (var emoteData in responseJson['emote_set']['emotes'] ??
+          responseJson['emote_set']['emote']) {
+        final emoteUrls = List<dynamic>.from(emoteData['data']['host']['files'])
+            .where((x) => x['format'].toUpperCase() == 'WEBP');
         if (emoteUrls.isEmpty) {
           continue;
         }
@@ -571,7 +709,8 @@ class Channel {
           id: emoteData['id'],
           provider: '7TV',
           mipmap: [
-            for (var url in emoteUrls) 'https:${emoteData['data']['host']['url']}/${url['name']}',
+            for (var url in emoteUrls)
+              'https:${emoteData['data']['host']['url']}/${url['name']}',
           ],
           zeroWidth: (emoteData['data']['flags'] & (1 << 8)) == (1 << 8),
         );
@@ -590,7 +729,8 @@ class Channel {
     this.name,
     this.id,
   }) {
-    client!.listeners.forEach((listener) => listener.onChannelStateChange(this, state));
+    client!.listeners
+        .forEach((listener) => listener.onChannelStateChange(this, state));
   }
 
   void send(String message, {bool action = false}) async {
@@ -604,7 +744,8 @@ class Channel {
     if (action) return send('ACTION $message');
 
     if (receiver == transmitter) {
-      transmitter?.send('PRIVMSG #${transmitter!.credentials!.login.toLowerCase()} :/w $name $message');
+      transmitter?.send(
+          'PRIVMSG #${transmitter!.credentials!.login.toLowerCase()} :/w $name $message');
       var chatMessage = Message(
         channel: this,
         user: User(
@@ -620,10 +761,18 @@ class Channel {
       );
 
       messages.add(chatMessage);
-      client!.listeners.forEach((listener) => listener.onWhisper(this, chatMessage));
+      client!.listeners
+          .forEach((listener) => listener.onWhisper(this, chatMessage));
     } else {
-      var lastMessageByTransmitter = messages.lastWhereOrNull((element) => element.user?.id == transmitter!.credentials!.id);
-      transmitter?.send('PRIVMSG $name :$message${(lastMessageByTransmitter?.body == message) ? ' ${utf8.decode([0xF3, 0xA0, 0x80, 0x80])}' : ''}');
+      var lastMessageByTransmitter = messages.lastWhereOrNull(
+          (element) => element.user?.id == transmitter!.credentials!.id);
+      transmitter?.send(
+          'PRIVMSG $name :$message${(lastMessageByTransmitter?.body == message) ? ' ${utf8.decode([
+                  0xF3,
+                  0xA0,
+                  0x80,
+                  0x80
+                ])}' : ''}');
     }
   }
 }
@@ -648,7 +797,8 @@ class Connection {
   StreamSubscription? streamSubscription;
 
   String get name => '${credentials!.login}@${transmission ? 'tx' : 'rx'}';
-  Iterable<Channel> get channels => client!.channels.where((channel) => channel.receiver == this);
+  Iterable<Channel> get channels =>
+      client!.channels.where((channel) => channel.receiver == this);
   List<Channel?> whispers = [];
 
   var state = ConnectionState.Disconnected;
@@ -661,10 +811,12 @@ class Connection {
 
     if (state != ConnectionState.Connected) {
       channelsToPart.clear();
-      channels.forEach((channel) => channel.stateChanger = ChannelState.Disconnected);
+      channels.forEach(
+          (channel) => channel.stateChanger = ChannelState.Disconnected);
     }
 
-    client!.listeners.forEach((listener) => listener.onConnectionStateChange(this, state));
+    client!.listeners
+        .forEach((listener) => listener.onConnectionStateChange(this, state));
   }
 
   List<Emote> emotes = [];
@@ -672,7 +824,10 @@ class Connection {
   Future<void> updateUserEmotes({
     List<String> emoteSets = const [],
   }) async {
-    if (credentials == null || credentials!.token == null || credentials!.clientId == null || credentials!.id == null) {
+    if (credentials == null ||
+        credentials!.token == null ||
+        credentials!.clientId == null ||
+        credentials!.id == null) {
       emotes.clear();
       return;
     }
@@ -681,7 +836,8 @@ class Connection {
       emotes.clear();
       // This is legacy af and will be deprecated
       var emotesRequest = await http.get(
-        Uri.parse('https://api.twitch.tv/kraken/users/${credentials!.id}/emotes'),
+        Uri.parse(
+            'https://api.twitch.tv/kraken/users/${credentials!.id}/emotes'),
         headers: {
           'Client-ID': credentials!.clientId!,
           'Accept': 'application/vnd.twitchtv.v5+json',
@@ -717,7 +873,8 @@ class Connection {
         // print('== $emoteSetsPack');
 
         var emotesRequest = await http.get(
-          Uri.parse('https://api.twitch.tv/helix/chat/emotes/set?${emoteSetsPack.map((x) => 'emote_set_id=$x').join('&')}'),
+          Uri.parse(
+              'https://api.twitch.tv/helix/chat/emotes/set?${emoteSetsPack.map((x) => 'emote_set_id=$x').join('&')}'),
           headers: {
             'Client-ID': credentials!.clientId!,
             'Authorization': 'Bearer ${credentials!.token}',
@@ -757,7 +914,8 @@ class Connection {
     this.transmission = false,
     this.credentials,
   }) {
-    client!.listeners.forEach((listener) => listener.onConnectionStateChange(this, state));
+    client!.listeners
+        .forEach((listener) => listener.onConnectionStateChange(this, state));
 
     connect(credentials);
   }
@@ -793,9 +951,15 @@ class Connection {
         break;
       case 'GLOBALUSERSTATE':
         if (transmission) {
-          await updateUserEmotes(emoteSets: message!.tags['emote-sets'].split(','));
-          await client!.updateBadges();
+          final emoteSetsRaw = message!.tags['emote-sets'];
+          if (emoteSetsRaw != null && emoteSetsRaw.isNotEmpty) {
+            await updateUserEmotes(emoteSets: emoteSetsRaw.split(','));
+          }
         }
+
+        // Global badges are needed to resolve moderator/vip/etc. and should be
+        // available even for anonymous connections.
+        await client!.updateBadges();
         break;
       case 'PING':
         send('PONG :${message!.parameters[1]}'); //  ?? 'tmi.twitch.tv'
@@ -807,7 +971,8 @@ class Connection {
         connect(credentials);
         break;
       case 'ROOMSTATE':
-        var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
+        var channel = channels.firstWhereOrNull(
+            (channel) => channel.name == message!.parameters[0]);
         channel?.stateChanger = ChannelState.Connected;
         channel?.id = int.tryParse(message!.tags['room-id']) ?? 22484632;
         await channel?.updateEmotes();
@@ -816,25 +981,34 @@ class Connection {
         await channel?.loadHistory();
         break;
       case 'NOTICE':
-        var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
-        if (message!.tags.containsKey('msg-id') ? message.tags['msg-id'] == 'msg_channel_suspended' : false) channel?.stateChanger = ChannelState.Suspended;
-        if (message.tags.containsKey('msg-id') ? message.tags['msg-id'] == 'msg_banned' : false) channel?.stateChanger = ChannelState.Banned;
+        var channel = channels.firstWhereOrNull(
+            (channel) => channel.name == message!.parameters[0]);
+        if (message!.tags.containsKey('msg-id')
+            ? message.tags['msg-id'] == 'msg_channel_suspended'
+            : false) channel?.stateChanger = ChannelState.Suspended;
+        if (message.tags.containsKey('msg-id')
+            ? message.tags['msg-id'] == 'msg_banned'
+            : false) channel?.stateChanger = ChannelState.Banned;
         try {
           var chatMessage = Message(
             channel: channel,
             id: message.tags['id'],
             body: message.parameters[1],
-            dateTime: DateTime.fromMillisecondsSinceEpoch(int.tryParse(message.tags['tmi-sent-ts']) ?? 0),
+            dateTime: DateTime.fromMillisecondsSinceEpoch(
+                int.tryParse(message.tags['tmi-sent-ts']) ?? 0),
           );
 
-          client!.listeners.forEach((listener) => listener.onMessage(channel, chatMessage));
+          client!.listeners
+              .forEach((listener) => listener.onMessage(channel, chatMessage));
 
           channel?.messages.add(chatMessage);
-          if ((channel?.messages.length ?? 0) > 1000) channel?.messages.removeRange(0, (channel.messages.length) - 1000);
+          if ((channel?.messages.length ?? 0) > 1000)
+            channel?.messages.removeRange(0, (channel.messages.length) - 1000);
         } catch (e) {}
         break;
       case 'PRIVMSG':
-        var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
+        var channel = channels.firstWhereOrNull(
+            (channel) => channel.name == message!.parameters[0]);
 
         var chatMessage = Message(
           channel: channel,
@@ -842,7 +1016,10 @@ class Connection {
             login: message!.prefix.split('!').first.toLowerCase(),
             displayName: message.tags['display-name'],
             id: int.tryParse(message.tags['user-id']),
-            color: (message.tags['color'] == null || message.tags['color'].trim().isEmpty ? null : message.tags['color'].substring(1)),
+            color: (message.tags['color'] == null ||
+                    message.tags['color'].trim().isEmpty
+                ? null
+                : message.tags['color'].substring(1)),
           ),
           id: message.tags['id'],
           body: message.parameters[1],
@@ -851,22 +1028,29 @@ class Connection {
         );
 
         channel?.users.putIfAbsent('users', () => []);
-        if (channel != null && chatMessage.user != null && chatMessage.user!.login != null) {
-          if (!channel.users['users']!.contains(chatMessage.user!.login!)) //.add();
+        if (channel != null &&
+            chatMessage.user != null &&
+            chatMessage.user!.login != null) {
+          if (!channel.users['users']!
+              .contains(chatMessage.user!.login!)) //.add();
             channel.users['users']!.add(chatMessage.user!.login!);
         }
 
-        client!.listeners.forEach((listener) => listener.onMessage(channel, chatMessage));
+        client!.listeners
+            .forEach((listener) => listener.onMessage(channel, chatMessage));
 
         channel?.messages.add(chatMessage);
-        if ((channel?.messages.length ?? 0) > 1000) channel?.messages.removeRange(0, (channel.messages.length) - 1000);
+        if ((channel?.messages.length ?? 0) > 1000)
+          channel?.messages.removeRange(0, (channel.messages.length) - 1000);
         break;
       case 'WHISPER':
         if (!transmission) break;
         var name = message!.prefix.split('!').first;
-        var channel = whispers.firstWhere((channel) => channel!.name == name, orElse: () {
+        var channel =
+            whispers.firstWhere((channel) => channel!.name == name, orElse: () {
           joinWhisper(name);
-          return whispers.firstWhere((channel) => channel!.name == name, orElse: () => null);
+          return whispers.firstWhere((channel) => channel!.name == name,
+              orElse: () => null);
         });
         if (channel == null) break;
 
@@ -876,7 +1060,10 @@ class Connection {
             login: message.prefix.split('!').first.toLowerCase(),
             displayName: message.tags['display-name'],
             id: int.tryParse(message.tags['user-id']),
-            color: (message.tags['color'] == null || message.tags['color'].trim().isEmpty ? null : message.tags['color'].substring(1)),
+            color: (message.tags['color'] == null ||
+                    message.tags['color'].trim().isEmpty
+                ? null
+                : message.tags['color'].substring(1)),
           ),
           id: message.tags['id'],
           body: message.parameters[1],
@@ -885,36 +1072,47 @@ class Connection {
         );
 
         channel.messages.add(chatMessage);
-        client!.listeners.forEach((listener) => listener.onWhisper(channel, chatMessage));
+        client!.listeners
+            .forEach((listener) => listener.onWhisper(channel, chatMessage));
         break;
 
       case 'CLEARMSG':
         try {
           print(message?.raw);
-          var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
+          var channel = channels.firstWhereOrNull(
+              (channel) => channel.name == message!.parameters[0]);
           // var channel = client.channels.state.firstWhere((channel) => channel.state is ChannelStateWithConnection && (channel.state as ChannelStateWithConnection).receiver == this && channel.name == channelName);
 
           var chatMessage = Message(
             channel: channel,
             id: message!.tags['id'],
-            body: 'A message from ${message.tags['login']} was deleted: ${message.parameters[1]}',
+            body:
+                'A message from ${message.tags['login']} was deleted: ${message.parameters[1]}',
             dateTime: DateTime.now(),
           );
 
-          client!.listeners.forEach((listener) => listener.onMessage(channel, chatMessage));
+          client!.listeners
+              .forEach((listener) => listener.onMessage(channel, chatMessage));
 
           channel?.messages.add(chatMessage);
-          if ((channel?.messages.length ?? 0) > 1000) channel?.messages.removeRange(0, (channel.messages.length) - 1000);
+          if ((channel?.messages.length ?? 0) > 1000)
+            channel?.messages.removeRange(0, (channel.messages.length) - 1000);
         } catch (e) {}
         break;
       case 'CLEARCHAT':
         try {
-          var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
-          var duration = message!.tags['ban-duration'] == null ? null : Duration(seconds: int.tryParse(message.tags['ban-duration']) ?? 0);
+          var channel = channels.firstWhereOrNull(
+              (channel) => channel.name == message!.parameters[0]);
+          var duration = message!.tags['ban-duration'] == null
+              ? null
+              : Duration(
+                  seconds: int.tryParse(message.tags['ban-duration']) ?? 0);
           var uid = int.tryParse(message.tags['target-user-id'] ?? '');
 
           if (uid != null) {
-            channel?.messages.where((msg) => msg.user != null && msg.user!.id == uid).forEach((element) {
+            channel?.messages
+                .where((msg) => msg.user != null && msg.user!.id == uid)
+                .forEach((element) {
               element.deleted = true;
             });
           } else {
@@ -926,14 +1124,21 @@ class Connection {
           var chatMessage = Message(
             channel: channel,
             // id: message.tags['id'],
-            body: uid != null ? '${message.parameters[1]} has been ' + (duration != null ? 'timed out for $duration' : 'permabanned') : 'Chat has been cleared by a moderator',
+            body: uid != null
+                ? '${message.parameters[1]} has been ' +
+                    (duration != null
+                        ? 'timed out for $duration'
+                        : 'permabanned')
+                : 'Chat has been cleared by a moderator',
             dateTime: DateTime.now(),
           );
 
-          client!.listeners.forEach((listener) => listener.onMessage(channel, chatMessage));
+          client!.listeners
+              .forEach((listener) => listener.onMessage(channel, chatMessage));
 
           channel?.messages.add(chatMessage);
-          if ((channel?.messages.length ?? 0) > 1000) channel?.messages.removeRange(0, (channel.messages.length) - 1000);
+          if ((channel?.messages.length ?? 0) > 1000)
+            channel?.messages.removeRange(0, (channel.messages.length) - 1000);
         } catch (e) {}
         break;
       case 'USERNOTICE':
@@ -950,13 +1155,19 @@ class Connection {
           // Sub with message 2:
           // @badge-info=;badges=glhf-pledge/1;color=#FF1493;display-name=splizhh;emotes=;flags=;id=92a97eba-d684-406d-8ca3-21e95c1cc874;login=splizhh;mod=0;msg-id=resub;msg-param-cumulative-months=6;msg-param-months=0;msg-param-multimonth-duration=0;msg-param-multimonth-tenure=0;msg-param-should-share-streak=1;msg-param-streak-months=5;msg-param-sub-plan-name=Channel\sSubscription\s(xqcow);msg-param-sub-plan=Prime;msg-param-was-gifted=false;room-id=71092938;subscriber=1;system-msg=splizhh\ssubscribed\swith\sPrime.\sThey've\ssubscribed\sfor\s6\smonths,\scurrently\son\sa\s5\smonth\sstreak!;tmi-sent-ts=1627742216686;user-id=230654107;user-type= :tmi.twitch.tv USERNOTICE #xqcow :pog
 
-          var channel = channels.firstWhereOrNull((channel) => channel.name == message!.parameters[0]);
+          var channel = channels.firstWhereOrNull(
+              (channel) => channel.name == message!.parameters[0]);
 
           var chatMessage = Message(
             channel: channel,
             id: message!.tags['id'],
-            body: message.tags['system-msg'].replaceAll('\\s', ' ') + message.parameters.length >= 2 ? message.parameters[1] : '',
-            dateTime: DateTime.fromMillisecondsSinceEpoch(int.tryParse(message.tags['tmi-sent-ts']) ?? 0),
+            body: message.tags['system-msg'].replaceAll('\\s', ' ') +
+                        message.parameters.length >=
+                    2
+                ? message.parameters[1]
+                : '',
+            dateTime: DateTime.fromMillisecondsSinceEpoch(
+                int.tryParse(message.tags['tmi-sent-ts']) ?? 0),
             user: User(
               login: message.prefix.split('!').first,
               displayName: message.tags['display-name'],
@@ -965,10 +1176,12 @@ class Connection {
             ),
           );
 
-          client!.listeners.forEach((listener) => listener.onMessage(channel, chatMessage));
+          client!.listeners
+              .forEach((listener) => listener.onMessage(channel, chatMessage));
 
           channel?.messages.add(chatMessage);
-          if ((channel?.messages.length ?? 0) > 1000) channel?.messages.removeRange(0, (channel.messages.length) - 1000);
+          if ((channel?.messages.length ?? 0) > 1000)
+            channel?.messages.removeRange(0, (channel.messages.length) - 1000);
         } catch (e) {}
         break;
     }
@@ -1019,6 +1232,7 @@ class Client {
   Credentials credentials;
   Map<Credentials?, List<Connection>> receivers = {};
   Map<Credentials?, Connection> transmitters = {};
+
   List<Channel> channels = [];
   List<Emote> emotes = [];
   List<Emote> emojis = [];
@@ -1031,30 +1245,92 @@ class Client {
   Future<void> updateBadges() async {
     badges.clear();
 
-    try {
-      var request = await http.get(
-        Uri.parse('https://api.twitch.tv/helix/chat/badges/global'), // https://badges.twitch.tv/v1/badges/global/display
-        headers: {
-          'Client-ID': credentials.clientId!,
-          'Authorization': 'Bearer ${credentials.token}',
-        },
-      );
-      var jsonRequest = jsonDecode(request.body);
+    final parsed = <Badge>[];
 
-      for (var categories in jsonRequest['data']) {
-        for (var badgeData in categories['versions']) {
-          badges.add(
-            Badge.fromJson(
-              categories['set_id'],
-              badgeData['id'],
-              badgeData,
-            ),
-          );
+    final normalizedToken =
+        credentials.token?.replaceFirst(RegExp(r'^oauth:'), '').trim();
+
+    final hasHelixAuth = (credentials.clientId?.isNotEmpty ?? false) &&
+        (normalizedToken?.isNotEmpty ?? false);
+
+    if (hasHelixAuth) {
+      try {
+        final request = await http.get(
+          Uri.parse('https://api.twitch.tv/helix/chat/badges/global'),
+          headers: {
+            'Client-ID': credentials.clientId!,
+            'Authorization': 'Bearer $normalizedToken',
+          },
+        ).timeout(const Duration(seconds: 10));
+
+        if (request.statusCode != 200) {
+          final bodyPreview = request.body.length > 300
+              ? '${request.body.substring(0, 300)}…'
+              : request.body;
+          print(
+              'Helix global badges failed: ${request.statusCode} $bodyPreview');
+          return;
         }
+        final jsonRequest = jsonDecode(request.body);
+        if (jsonRequest is Map<String, dynamic>) {
+          final data = jsonRequest['data'];
+          if (data is Iterable) {
+            for (final categories in data) {
+              if (categories is! Map<String, dynamic>) continue;
+              final versions = categories['versions'];
+              if (versions is! Iterable) continue;
+              for (final badgeData in versions) {
+                if (badgeData is! Map<String, dynamic>) continue;
+                parsed.add(
+                  Badge.fromJson(
+                    categories['set_id']?.toString(),
+                    badgeData['id']?.toString(),
+                    badgeData,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Helix global badges exception: $e');
+        return;
       }
-    } catch (e) {
-      print('Couldn\'t load Twitch global badges');
     }
+
+    // Only fall back for anonymous/no-auth mode.
+    if (!hasHelixAuth && parsed.isEmpty) {
+      try {
+        final request = await http
+            .get(
+              Uri.parse(
+                  'https://badges.twitch.tv/v1/badges/global/display?language=en'),
+            )
+            .timeout(const Duration(seconds: 10));
+        final jsonRequest = jsonDecode(request.body);
+        if (jsonRequest is Map<String, dynamic>) {
+          final badgeSets =
+              (jsonRequest['badge_sets'] as Map<String, dynamic>? ?? const {});
+
+          for (final entry in badgeSets.entries) {
+            final setId = entry.key;
+            final setValue = entry.value as Map<String, dynamic>?;
+            final versions =
+                (setValue?['versions'] as Map<String, dynamic>? ?? const {});
+            for (final versionEntry in versions.entries) {
+              final versionId = versionEntry.key;
+              final versionValue = versionEntry.value;
+              if (versionValue is! Map<String, dynamic>) continue;
+              parsed.add(Badge.fromJson(setId, versionId, versionValue));
+            }
+          }
+        }
+      } catch (_) {
+        // Intentionally swallow.
+      }
+    }
+
+    badges.addAll(parsed);
   }
 
   // TODO: Rework this to not clear emotes before they are acquired and only clear if we can receive new ones, maybe return difference?
@@ -1063,12 +1339,17 @@ class Client {
     emojis.clear();
 
     try {
-      var response = await http.get(Uri.parse('https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json'));
+      var response = await http.get(Uri.parse(
+          'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json'));
       var jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
 
-      for (var entry in jsonResponse.where((entry) => entry['has_img_twitter'] == true)) {
+      for (var entry
+          in jsonResponse.where((entry) => entry['has_img_twitter'] == true)) {
         var emote = Emote(
-          alt: entry['unified'].split('-').map((x) => String.fromCharCode(int.parse(x, radix: 16))).join(),
+          alt: entry['unified']
+              .split('-')
+              .map((x) => String.fromCharCode(int.parse(x, radix: 16)))
+              .join(),
           name: entry['short_name'],
           // id: emoteData['id'],
           provider: 'Emoji',
@@ -1110,7 +1391,8 @@ class Client {
     }
 
     try {
-      var emotesRequest = await http.get(Uri.parse('https://api.frankerfacez.com/v1/set/global'));
+      var emotesRequest = await http
+          .get(Uri.parse('https://api.frankerfacez.com/v1/set/global'));
       var jsonRequest = jsonDecode(emotesRequest.body);
 
       for (var emoteSetEntry in jsonRequest['sets'].entries) {
@@ -1121,7 +1403,8 @@ class Client {
             // id: emoteData['id'],
             provider: 'FFZ',
             mipmap: [
-              for (var url in emoteData['urls'].values) url.startsWith('http') ? url : 'https:$url',
+              for (var url in emoteData['urls'].values)
+                url.startsWith('http') ? url : 'https:$url',
             ],
           );
 
@@ -1133,7 +1416,8 @@ class Client {
     }
 
     try {
-      var emotesRequest = await http.get(Uri.parse('https://api.betterttv.net/3/cached/emotes/global'));
+      var emotesRequest = await http
+          .get(Uri.parse('https://api.betterttv.net/3/cached/emotes/global'));
       var jsonRequest = jsonDecode(emotesRequest.body);
 
       for (var emoteData in jsonRequest) {
@@ -1193,7 +1477,8 @@ class Client {
       // }
 
       // https://api.7tv.app/v3/emote-sets/global
-      final response = await http.get(Uri.parse('https://7tv.io/v3/emote-sets/global'));
+      final response =
+          await http.get(Uri.parse('https://7tv.io/v3/emote-sets/global'));
       final responseJson = json.decode(utf8.decode(response.bodyBytes));
       for (final emote in responseJson['emotes']) {
         emotes.add(Emote(
@@ -1201,7 +1486,9 @@ class Client {
           id: emote['id'],
           provider: '7TV',
           mipmap: [
-            for (final url in emote['data']['host']['files'].where((x) => x['format'] != 'AVIF')) 'https:${emote['data']['host']['url']}/${url['name']}',
+            for (final url in emote['data']['host']['files']
+                .where((x) => x['format'] != 'AVIF'))
+              'https:${emote['data']['host']['url']}/${url['name']}',
           ],
           zeroWidth: (emote['data']['flags'] & (1 << 8)) == (1 << 8),
         ));
@@ -1227,20 +1514,31 @@ class Client {
     var tokens = ((attemptsPerSecond * 2.0) - 1.0).floor();
     // var tokens = (50.0 * 0.95 / 15.0 * 2.0).floor() - 2;
 
-    var channelsToJoin = channels.where((channel) => channel.state == ChannelState.Disconnected && channel.receiver!.state == ConnectionState.Connected).take(tokens);
-    var channelsToJoinGroups = groupBy(channelsToJoin, (Channel channel) => channel.receiver);
+    var channelsToJoin = channels
+        .where((channel) =>
+            channel.state == ChannelState.Disconnected &&
+            channel.receiver!.state == ConnectionState.Connected)
+        .take(tokens);
+    var channelsToJoinGroups =
+        groupBy(channelsToJoin, (Channel channel) => channel.receiver);
     for (var channelGroup in channelsToJoinGroups.entries) {
-      channelGroup.key!.send('JOIN ${channelGroup.value.map((channel) => channel.name).join(',')}');
-      channelGroup.value.forEach((channel) => channel.stateChanger = ChannelState.Connecting);
+      channelGroup.key!.send(
+          'JOIN ${channelGroup.value.map((channel) => channel.name).join(',')}');
+      channelGroup.value
+          .forEach((channel) => channel.stateChanger = ChannelState.Connecting);
     }
 
     tokens -= channelsToJoin.length;
 
-    for (var connection in receivers.values.expand((element) => element).where((connection) => connection.state == ConnectionState.Connected && connection.channelsToPart.isNotEmpty)) {
+    for (var connection in receivers.values.expand((element) => element).where(
+        (connection) =>
+            connection.state == ConnectionState.Connected &&
+            connection.channelsToPart.isNotEmpty)) {
       if (tokens <= 0) break;
       var channelsToPart = connection.channelsToPart.take(tokens);
       connection.send('PART ${channelsToPart.join(',')}');
-      connection.channelsToPart.removeWhere((element) => channelsToPart.contains(element));
+      connection.channelsToPart
+          .removeWhere((element) => channelsToPart.contains(element));
       tokens -= channelsToPart.length;
     }
   }
@@ -1253,7 +1551,9 @@ class Client {
     transmitters[null]?.connect(newCredentials);
   }
 
-  Future<List<Connection?>> acquireConnections({Credentials? receiverCredentials, Credentials? transmitterCredentials}) async {
+  Future<List<Connection?>> acquireConnections(
+      {Credentials? receiverCredentials,
+      Credentials? transmitterCredentials}) async {
     if (receivers[receiverCredentials] == null) {
       receivers[receiverCredentials] = <Connection>[];
     }
@@ -1261,26 +1561,34 @@ class Client {
     var bestSuitedReceiver = receivers[receiverCredentials]!.firstWhere(
       (connection) => connection.channels.length < 100,
       orElse: () {
-        var receiver = Connection(client: this, credentials: receiverCredentials ?? credentials);
+        var receiver = Connection(
+            client: this, credentials: receiverCredentials ?? credentials);
         receivers[receiverCredentials]!.add(receiver);
         return receiver;
       },
     );
 
     if (transmitters[transmitterCredentials] == null) {
-      transmitters[transmitterCredentials] = Connection(client: this, credentials: transmitterCredentials ?? credentials, transmission: true);
+      transmitters[transmitterCredentials] = Connection(
+          client: this,
+          credentials: transmitterCredentials ?? credentials,
+          transmission: true);
     }
 
     return [bestSuitedReceiver, transmitters[transmitterCredentials]];
   }
 
-  Future<List<Channel>> swapChannels(List<Channel> channelsToSwap, {Credentials? receiverCredentials, Credentials? transmitterCredentials}) async {
+  Future<List<Channel>> swapChannels(List<Channel> channelsToSwap,
+      {Credentials? receiverCredentials,
+      Credentials? transmitterCredentials}) async {
     var swappedChannels = <Channel>[];
 
     for (var channel in channelsToSwap) {
       channel.receiver!.channelsToPart.add(channel.name);
 
-      var connections = await acquireConnections(receiverCredentials: receiverCredentials, transmitterCredentials: transmitterCredentials);
+      var connections = await acquireConnections(
+          receiverCredentials: receiverCredentials,
+          transmitterCredentials: transmitterCredentials);
 
       channel.receiver = connections.first;
       channel.transmitter = connections.last;
@@ -1292,7 +1600,9 @@ class Client {
     return swappedChannels;
   }
 
-  Future<List<Channel>> joinChannels(List<dynamic> channelsToJoin, {Credentials? receiverCredentials, Credentials? transmitterCredentials}) async {
+  Future<List<Channel>> joinChannels(List<dynamic> channelsToJoin,
+      {Credentials? receiverCredentials,
+      Credentials? transmitterCredentials}) async {
     var joinedChannels = <Channel>[];
 
     for (var channelToJoin in channelsToJoin) {
@@ -1300,9 +1610,15 @@ class Client {
         throw 'Joining channels by id isn\'t supported yet.';
       }
 
-      var connections = await acquireConnections(receiverCredentials: receiverCredentials, transmitterCredentials: transmitterCredentials);
+      var connections = await acquireConnections(
+          receiverCredentials: receiverCredentials,
+          transmitterCredentials: transmitterCredentials);
 
-      var channel = Channel(client: this, name: channelToJoin.toLowerCase(), receiver: connections.first, transmitter: connections.last);
+      var channel = Channel(
+          client: this,
+          name: channelToJoin.toLowerCase(),
+          receiver: connections.first,
+          transmitter: connections.last);
       channels.add(channel);
       joinedChannels.add(channel);
     }
@@ -1324,7 +1640,8 @@ class Client {
 }
 
 class GQL {
-  static Future<dynamic> request7(String gql, {Credentials? credentials}) async {
+  static Future<dynamic> request7(String gql,
+      {Credentials? credentials}) async {
     var request = await http.post(
       Uri.parse('https://api.7tv.app/v2/gql'),
       body: jsonEncode({'query': gql}),

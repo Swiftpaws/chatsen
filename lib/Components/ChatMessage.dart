@@ -46,17 +46,21 @@ class ChatMessage extends StatelessWidget {
   Color getUserColor(BuildContext context, Color color) {
     switch (Theme.of(context).brightness) {
       case Brightness.dark:
-        final hsl = HSLColor.fromColor(Color(color.value == 0xFF000000 ? 0xFF010101 : color.value));
+        final hsl = HSLColor.fromColor(
+            Color(color.value == 0xFF000000 ? 0xFF010101 : color.value));
         return hsl.withLightness(hsl.lightness.clamp(0.6, 1.0)).toColor();
       case Brightness.light:
-        final hsl = HSLColor.fromColor(Color(color.value == 0xFF000000 ? 0xFF010101 : color.value));
+        final hsl = HSLColor.fromColor(
+            Color(color.value == 0xFF000000 ? 0xFF010101 : color.value));
         return hsl.withLightness(hsl.lightness.clamp(0.0, 0.4)).toColor();
     }
   }
 
   Future<ui.Image> imageFromUrl(String url) {
     var completer = Completer<ui.Image>();
-    NetworkImage(url).resolve(ImageConfiguration()).addListener(ImageStreamListener((image, synchronousCall) {
+    NetworkImage(url)
+        .resolve(ImageConfiguration())
+        .addListener(ImageStreamListener((image, synchronousCall) {
       completer.complete(image.image);
     }));
     return completer.future;
@@ -64,16 +68,39 @@ class ChatMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var color = getUserColor(context, Color(int.tryParse(message.user?.color ?? '777777', radix: 16) ?? 0x777777).withAlpha(255));
+    final settingsState = context.watch<Settings>().state;
+    final settings = settingsState is SettingsLoaded ? settingsState : null;
+    final bttvBadges = context.watch<BTTVBadges>();
+    final ffzBadges = context.watch<FFZBadges>();
+    final ffzapBadges = context.watch<FFZAPBadges>();
+    final chatterinoBadges = context.watch<ChatterinoBadges>();
+    final dankChatBadges = context.watch<DankChatBadges>();
+    final chattyBadges = context.watch<ChattyBadges>();
+    final sevenTVBadges = context.watch<SevenTVBadges>();
+    final chatsenBadges = context.watch<ChatsenBadges>();
+    final chatsen2Badges = context.watch<Chatsen2Badges>();
+
+    var color = getUserColor(
+        context,
+        Color(int.tryParse(message.user?.color ?? '777777', radix: 16) ??
+                0x777777)
+            .withAlpha(255));
     var spans = <InlineSpan>[];
     var shadowSpread = 1.0;
     var shadowColor = Theme.of(context).colorScheme.background;
     var shadows = shadow
         ? [
-            Shadow(offset: Offset(-shadowSpread, -shadowSpread), color: shadowColor),
-            Shadow(offset: Offset(shadowSpread, -shadowSpread), color: shadowColor),
-            Shadow(offset: Offset(shadowSpread, shadowSpread), color: shadowColor),
-            Shadow(offset: Offset(-shadowSpread, shadowSpread), color: shadowColor),
+            Shadow(
+                offset: Offset(-shadowSpread, -shadowSpread),
+                color: shadowColor),
+            Shadow(
+                offset: Offset(shadowSpread, -shadowSpread),
+                color: shadowColor),
+            Shadow(
+                offset: Offset(shadowSpread, shadowSpread), color: shadowColor),
+            Shadow(
+                offset: Offset(-shadowSpread, shadowSpread),
+                color: shadowColor),
           ]
         : null;
 
@@ -112,7 +139,7 @@ class ChatMessage extends StatelessWidget {
           );
           break;
         case twitch.MessageTokenType.Image:
-          if (!(BlocProvider.of<Settings>(context).state as SettingsLoaded).messageImagePreview) {
+          if (!(settings?.messageImagePreview ?? true)) {
             spans.add(
               TextSpan(
                 children: [
@@ -123,7 +150,9 @@ class ChatMessage extends StatelessWidget {
                       decoration: TextDecoration.underline,
                       shadows: shadows,
                     ),
-                    recognizer: TapGestureRecognizer()..onTap = () async => launch(Uri.parse(token.data).toString()),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap =
+                          () async => launch(Uri.parse(token.data).toString()),
                   ),
                   TextSpan(text: ' '),
                 ],
@@ -140,8 +169,10 @@ class ChatMessage extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(2.0),
                     child: InkWell(
-                      onTap: () async => launch(Uri.parse(token.data).toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
-                      child: NetworkImageW(Uri.parse(token.data).toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
+                      onTap: () async => launch(Uri.parse(token.data)
+                          .toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
+                      child: NetworkImageW(Uri.parse(token.data)
+                          .toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
                     ),
                   ),
                 ),
@@ -180,8 +211,12 @@ class ChatMessage extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.only(right: 4.0),
                         child: NetworkImageW(
-                          token.data.provider == 'Twitch' ? token.data.mipmap[1] : token.data.mipmap.last,
-                          scale: token.data.provider == 'Twitch' ? 2.0 : (token.data.mipmap.length == 1 ? 1.0 : 4.0),
+                          token.data.provider == 'Twitch'
+                              ? token.data.mipmap[1]
+                              : token.data.mipmap.last,
+                          scale: token.data.provider == 'Twitch'
+                              ? 2.0
+                              : (token.data.mipmap.length == 1 ? 1.0 : 4.0),
                           height: token.data.provider == 'Emoji' ? 24.0 : null,
                         ),
                       ),
@@ -195,7 +230,8 @@ class ChatMessage extends StatelessWidget {
               TextSpan(
                 text: '${(token.data as twitch.Emote).name!} ',
                 style: TextStyle(
-                  color: (message.user == null || message.action) ? color : null,
+                  color:
+                      (message.user == null || message.action) ? color : null,
                   shadows: shadows,
                 ),
               ),
@@ -260,7 +296,9 @@ class ChatMessage extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(right: 4.0),
                         child: NetworkImageW(
-                          emote.provider == 'Twitch' ? emote.mipmap[1] : emote.mipmap.last,
+                          emote.provider == 'Twitch'
+                              ? emote.mipmap[1]
+                              : emote.mipmap.last,
                           scale: emote.provider == 'Twitch' ? 2.0 : 4.0,
                           height: emote.provider == 'Emoji' ? 24.0 : null,
                         ),
@@ -324,7 +362,9 @@ class ChatMessage extends StatelessWidget {
       key: ValueKey(message.id),
       child: Container(
         width: double.infinity,
-        color: message.mention ? Theme.of(context).colorScheme.primary.withAlpha(48) : backgroundColor,
+        color: message.mention
+            ? Theme.of(context).colorScheme.primary.withAlpha(48)
+            : backgroundColor,
         child: InkWell(
           onDoubleTap: () async {
             await Clipboard.setData(ClipboardData(text: message.body ?? ''));
@@ -370,9 +410,10 @@ class ChatMessage extends StatelessWidget {
                             shadows: shadows,
                           ),
                         ),
-                      if ((BlocProvider.of<Settings>(context).state as SettingsLoaded).messageTimestamp)
+                      if (settings?.messageTimestamp ?? false)
                         TextSpan(
-                          text: '${message.dateTime!.hour.toString().padLeft(2, '0')}:${message.dateTime!.minute.toString().padLeft(2, '0')} ',
+                          text:
+                              '${message.dateTime!.hour.toString().padLeft(2, '0')}:${message.dateTime!.minute.toString().padLeft(2, '0')} ',
                           style: TextStyle(
                             // fontWeight: FontWeight.bold,
                             shadows: shadows,
@@ -394,15 +435,23 @@ class ChatMessage extends StatelessWidget {
                         // Good god chatsen2 will need something better than this
                         for (var badge in [
                           ...message.badges,
-                          ...BlocProvider.of<BTTVBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<FFZBadges>(context).getBadgesForUser('${message.user?.login?.toLowerCase()}'),
-                          ...BlocProvider.of<FFZAPBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<ChatterinoBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<DankChatBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<ChattyBadges>(context).getBadgesForUser('${message.user?.login}'),
-                          ...BlocProvider.of<SevenTVBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<ChatsenBadges>(context).getBadgesForUser('${message.user?.id}'),
-                          ...BlocProvider.of<Chatsen2Badges>(context).getBadgesForUser('${message.user?.id}'),
+                          ...bttvBadges.getBadgesForUser('${message.user?.id}'),
+                          ...ffzBadges.getBadgesForUser(
+                              '${message.user?.login?.toLowerCase()}'),
+                          ...ffzapBadges
+                              .getBadgesForUser('${message.user?.id}'),
+                          ...chatterinoBadges
+                              .getBadgesForUser('${message.user?.id}'),
+                          ...dankChatBadges
+                              .getBadgesForUser('${message.user?.id}'),
+                          ...chattyBadges
+                              .getBadgesForUser('${message.user?.login}'),
+                          ...sevenTVBadges
+                              .getBadgesForUser('${message.user?.id}'),
+                          ...chatsenBadges
+                              .getBadgesForUser('${message.user?.id}'),
+                          ...chatsen2Badges
+                              .getBadgesForUser('${message.user?.id}'),
                         ])
                           WidgetSpan(
                             child: WidgetTooltip(
@@ -412,12 +461,23 @@ class ChatMessage extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 4.0),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 4.0),
                                       child: ClipRRect(
-                                        borderRadius: badge.color != null ? BorderRadius.circular(96.0 / 8.0) : BorderRadius.zero,
+                                        borderRadius: badge.color != null
+                                            ? BorderRadius.circular(96.0 / 8.0)
+                                            : BorderRadius.zero,
                                         child: Container(
-                                          color: badge.color != null ? Color(int.tryParse(badge.color ?? '777777', radix: 16) ?? 0x777777).withAlpha(255) : null,
-                                          child: badge.mipmap!.last!.endsWith('.svg')
+                                          color: badge.color != null
+                                              ? Color(int.tryParse(
+                                                          badge.color ??
+                                                              '777777',
+                                                          radix: 16) ??
+                                                      0x777777)
+                                                  .withAlpha(255)
+                                              : null,
+                                          child: badge.mipmap!.last!
+                                                  .endsWith('.svg')
                                               ? SvgPicture.network(
                                                   badge.mipmap!.last!,
                                                   height: 96.0,
@@ -433,16 +493,26 @@ class ChatMessage extends StatelessWidget {
                                       ),
                                     ),
                                     Text('${badge.title}'),
-                                    if (badge.title != badge.description && badge.description != null) Text('${badge.description}'),
+                                    if (badge.title != badge.description &&
+                                        badge.description != null)
+                                      Text('${badge.description}'),
                                   ],
                                 ),
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 4.0),
                                 child: ClipRRect(
-                                  borderRadius: badge.color != null ? BorderRadius.circular(2.0) : BorderRadius.zero,
+                                  borderRadius: badge.color != null
+                                      ? BorderRadius.circular(2.0)
+                                      : BorderRadius.zero,
                                   child: Container(
-                                    color: badge.color != null ? Color(int.tryParse(badge.color ?? '777777', radix: 16) ?? 0x777777).withAlpha(255) : null,
+                                    color: badge.color != null
+                                        ? Color(int.tryParse(
+                                                    badge.color ?? '777777',
+                                                    radix: 16) ??
+                                                0x777777)
+                                            .withAlpha(255)
+                                        : null,
                                     child: badge.mipmap!.last!.endsWith('.svg')
                                         ? SvgPicture.network(
                                             badge.mipmap!.last!,
@@ -461,7 +531,12 @@ class ChatMessage extends StatelessWidget {
                           ),
                       if (message.user != null)
                         TextSpan(
-                          text: '${message.user!.displayName}' + (message.user!.displayName!.toLowerCase() != message.user!.login!.toLowerCase() ? ' (${message.user!.login})' : '') + (message.action ? ' ' : ': '),
+                          text: '${message.user!.displayName}' +
+                              (message.user!.displayName!.toLowerCase() !=
+                                      message.user!.login!.toLowerCase()
+                                  ? ' (${message.user!.login})'
+                                  : '') +
+                              (message.action ? ' ' : ': '),
                           style: TextStyle(
                             color: color,
                             fontWeight: FontWeight.bold,
@@ -470,7 +545,10 @@ class ChatMessage extends StatelessWidget {
                           recognizer: TapGestureRecognizer()
                             ..onTap = () async => Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (BuildContext context) => SearchPage(channel: message.channel, user: message.user),
+                                    builder: (BuildContext context) =>
+                                        SearchPage(
+                                            channel: message.channel,
+                                            user: message.user),
                                   ),
                                 ),
                         ),

@@ -6,10 +6,20 @@ import '/Components/UI/BlurModal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
+
+enum _UploadPickSource {
+  camera,
+  file,
+}
 
 class UploadModal extends StatelessWidget {
   // if (lowName.endsWith('.png') || lowName.endsWith('.jpg') || lowName.endsWith('.jpeg') || lowName.endsWith('.apng') || lowName.endsWith('.gif') || lowName.endsWith('.webp'))
+
+  // Optional: set this to enable Imgur uploads.
+  // Imgur requires an application Client ID (Authorization: Client-ID <id>).
+  static const String imgurClientId = '';
 
   static const imgurExtensions = <String>[
     'jpg',
@@ -53,13 +63,24 @@ class UploadModal extends StatelessWidget {
   final Uint8List bytes;
   final String fileName;
   final twitch.Channel channel;
+  final NavigatorState navigator;
+  final ScaffoldMessengerState messenger;
 
   const UploadModal({
     Key? key,
     required this.bytes,
     required this.fileName,
     required this.channel,
+    required this.navigator,
+    required this.messenger,
   }) : super(key: key);
+
+  void _closeThenSnack(String message) {
+    navigator.pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +115,15 @@ class UploadModal extends StatelessWidget {
                 if (imgurExtensions.contains(extension)) ...[
                   ElevatedButton.icon(
                     onPressed: () async {
-                      Navigator.of(context).pop();
+                      if (imgurClientId.isEmpty) {
+                        _closeThenSnack('Imgur upload is not configured (missing Client-ID).');
+                        return;
+                      }
+
+                      navigator.pop();
+
                       var request = http.MultipartRequest('POST', Uri.parse('https://api.imgur.com/3/upload'));
+                      request.headers['Authorization'] = 'Client-ID $imgurClientId';
                       request.files.add(
                         http.MultipartFile.fromBytes(
                           'image',
@@ -106,7 +134,15 @@ class UploadModal extends StatelessWidget {
                       var response = await request.send();
                       var responseBody = await response.stream.bytesToString();
                       var responseJson = jsonDecode(responseBody);
-                      if (response.statusCode == 200) channel.send(responseJson['data']['link']);
+                      if (response.statusCode == 200) {
+                        channel.send(responseJson['data']['link']);
+                      } else {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Imgur upload failed (${response.statusCode}).')),
+                          );
+                        });
+                      }
                       print('Upload: $responseBody');
                     },
                     label: Text('imgur'),
@@ -123,7 +159,7 @@ class UploadModal extends StatelessWidget {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
-                        Navigator.of(context).pop();
+                        navigator.pop();
                         var request = http.MultipartRequest('POST', Uri.parse('https://catbox.moe/user/api.php'));
                         request.files.add(
                           http.MultipartFile.fromBytes(
@@ -136,7 +172,15 @@ class UploadModal extends StatelessWidget {
                         request.fields['reqtype'] = 'fileupload';
                         var response = await request.send();
                         var responseBody = await response.stream.bytesToString();
-                        if (response.statusCode == 200) channel.send(responseBody);
+                        if (response.statusCode == 200) {
+                          channel.send(responseBody);
+                        } else {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('catbox upload failed (${response.statusCode}).')),
+                            );
+                          });
+                        }
                         print('Upload: $responseBody');
                       },
                       label: Text('catbox.moe'),
@@ -172,24 +216,86 @@ class UploadModal extends StatelessWidget {
     required twitch.Channel channel,
   }) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        withData: true,
-        type: Platform.isIOS ? FileType.image : FileType.any,
-      );
+      final isMobile = Platform.isIOS || Platform.isAndroid;
 
-      if (result == null || result.files.isEmpty) return;
+      _UploadPickSource source = _UploadPickSource.file;
+      if (isMobile) {
+        if (!context.mounted) return;
+        final pickedSource = await showModalBottomSheet<_UploadPickSource>(
+          context: context,
+          builder: (context) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.photo_camera),
+                    title: Text('Take photo'),
+                    onTap: () => Navigator.of(context).pop(_UploadPickSource.camera),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.photo_library),
+                    title: Text('Choose file'),
+                    onTap: () => Navigator.of(context).pop(_UploadPickSource.file),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
 
-      final picked = result.files.single;
-      final pickedBytes = picked.bytes ?? (picked.path != null ? await File(picked.path!).readAsBytes() : null);
-      if (pickedBytes == null) return;
+        if (pickedSource == null) return;
+        source = pickedSource;
+      }
+
+      late Uint8List pickedBytes;
+      late String pickedName;
+
+      if (isMobile && source == _UploadPickSource.camera) {
+        final picker = ImagePicker();
+        final photo = await picker.pickImage(source: ImageSource.camera);
+        if (photo == null) return;
+        pickedBytes = await photo.readAsBytes();
+        final rawName = photo.name.isNotEmpty ? photo.name : photo.path.split('/').last;
+        if (rawName.contains('.')) {
+          pickedName = rawName;
+        } else {
+          final mime = photo.mimeType;
+          final ext = (mime == 'image/png')
+              ? 'png'
+              : (mime == 'image/gif')
+                  ? 'gif'
+                  : (mime == 'image/webp')
+                      ? 'webp'
+                      : 'jpg';
+          pickedName = 'photo.$ext';
+        }
+      } else {
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: false,
+          withData: true,
+          type: Platform.isIOS ? FileType.image : FileType.any,
+        );
+
+        if (result == null || result.files.isEmpty) return;
+
+        final picked = result.files.single;
+        final bytes = picked.bytes ?? (picked.path != null ? await File(picked.path!).readAsBytes() : null);
+        if (bytes == null) return;
+        pickedBytes = bytes;
+        pickedName = picked.name;
+      }
+
+      if (!context.mounted) return;
 
       await BlurModal.show(
         context: context,
         child: UploadModal(
           bytes: pickedBytes,
-          fileName: picked.name,
+          fileName: pickedName,
           channel: channel,
+          navigator: Navigator.of(context),
+          messenger: ScaffoldMessenger.of(context),
         ),
       );
       // ignore: empty_catches

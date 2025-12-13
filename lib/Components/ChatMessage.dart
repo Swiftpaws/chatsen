@@ -43,6 +43,25 @@ class ChatMessage extends StatelessWidget {
     this.gkey,
   }) : super(key: key);
 
+  static final _leadingUrlPunctuationRegex = RegExp(r'^[\(\[\{<]+');
+  static final _trailingUrlPunctuationRegex = RegExp(r'[\)\]\}>\.,!?;:]+$');
+
+  static String _normalizeUrlForLaunch(String raw) {
+    var value = raw.trim();
+    value = value
+        .replaceFirst(_leadingUrlPunctuationRegex, '')
+        .replaceFirst(_trailingUrlPunctuationRegex, '');
+
+    if (value.startsWith('http://') ||
+        value.startsWith('https://') ||
+        value.contains('://')) {
+      return value;
+    }
+
+    // Treat bare domains like "example.com" or "www.example.com" as https.
+    return 'https://$value';
+  }
+
   Color getUserColor(BuildContext context, Color color) {
     switch (Theme.of(context).brightness) {
       case Brightness.dark:
@@ -130,7 +149,8 @@ class ChatMessage extends StatelessWidget {
                   ),
                   recognizer: TapGestureRecognizer()
                     ..onTap = () async {
-                      await launch(Uri.parse(token.data).toString());
+                      await launch(
+                          _normalizeUrlForLaunch(token.data.toString()));
                     },
                 ),
                 TextSpan(text: ' '),
@@ -151,8 +171,8 @@ class ChatMessage extends StatelessWidget {
                       shadows: shadows,
                     ),
                     recognizer: TapGestureRecognizer()
-                      ..onTap =
-                          () async => launch(Uri.parse(token.data).toString()),
+                      ..onTap = () async =>
+                          launch(_normalizeUrlForLaunch(token.data.toString())),
                   ),
                   TextSpan(text: ' '),
                 ],
@@ -169,9 +189,11 @@ class ChatMessage extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(2.0),
                     child: InkWell(
-                      onTap: () async => launch(Uri.parse(token.data)
-                          .toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
-                      child: NetworkImageW(Uri.parse(token.data)
+                      onTap: () async => launch(_normalizeUrlForLaunch(token
+                          .data
+                          .toString())), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
+                      child: NetworkImageW(Uri.parse(
+                              _normalizeUrlForLaunch(token.data.toString()))
                           .toString()), //'https://cdn.imgproxify.com/image?url=${Uri.encodeComponent(token.data)}'),
                     ),
                   ),

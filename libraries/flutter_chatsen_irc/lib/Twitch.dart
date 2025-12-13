@@ -317,6 +317,12 @@ class Message {
           split.toLowerCase() ==
               '@${channel?.receiver?.credentials?.login.toLowerCase()},'),
     );
+    final domainLikeRegex = RegExp(
+      r'^(?:www\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:/[\S]*)?$',
+      caseSensitive: false,
+    );
+    final leadingUrlPunctuationRegex = RegExp(r'^[\(\[\{<]+');
+    final trailingUrlPunctuationRegex = RegExp(r'[\)\]\}>\.,!?;:]+$');
 
     for (var messageSplit in splits) {
       var client = channel?.transmitter?.client;
@@ -347,6 +353,12 @@ class Message {
       var emote = twitchEmote ?? channelEmote ?? globalEmote ?? emojiEmote;
       var lowSplit = messageSplit.toLowerCase();
 
+      // Allow matching of links with surrounding punctuation, e.g. "(example.com)" or "example.com,".
+      var linkCandidate = messageSplit
+          .replaceFirst(leadingUrlPunctuationRegex, '')
+          .replaceFirst(trailingUrlPunctuationRegex, '');
+      var lowLinkCandidate = linkCandidate.toLowerCase();
+
       if (lowSplit.startsWith('http://') || lowSplit.startsWith('https://')) {
         if (lowSplit.endsWith('.png') ||
             lowSplit.endsWith('.jpg') ||
@@ -358,6 +370,10 @@ class Message {
         } else {
           tokens.add(MessageToken.link(messageSplit));
         }
+      } else if (!lowLinkCandidate.contains('@') &&
+          domainLikeRegex.hasMatch(lowLinkCandidate)) {
+        // Detect bare domains like "example.com" (without a scheme).
+        tokens.add(MessageToken.link(messageSplit));
       } else if (emote != null) {
         bool isZeroWidth =
             (zeroWidthEmotes.contains(emote.name) || emote.zeroWidth);

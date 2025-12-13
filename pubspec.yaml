@@ -54,7 +54,7 @@ flutter:
   #   - assets/1234567777.png
 
 flutter_icons:
-  android: true
+  android: false
   ios: true
   remove_alpha_ios: true
   image_path: "assets/logo.png"

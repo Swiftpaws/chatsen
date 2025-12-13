@@ -401,8 +401,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
                                   child: Material(
                                     color: Colors.transparent,
                                     child: TabBar(
-                                      labelPadding: EdgeInsets.only(left: 8.0),
+                                      tabAlignment: TabAlignment.start,
+                                      padding: EdgeInsets.zero,
+                                      labelPadding: EdgeInsets.symmetric(horizontal: 8.0),
                                       isScrollable: true,
+                                      dividerColor: Colors.transparent,
+                                      dividerHeight: 0,
                                       tabs: client.channels
                                           .map(
                                             (channel) => HomeTab(

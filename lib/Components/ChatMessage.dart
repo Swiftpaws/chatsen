@@ -123,12 +123,40 @@ class ChatMessage extends StatelessWidget {
           ]
         : null;
 
-    for (var token in message.tokens) {
+    var isReply = (message.replyParentMsgId?.isNotEmpty ?? false) ||
+        (message.replyParentMsgBody?.isNotEmpty ?? false) ||
+        (message.replyParentDisplayName?.isNotEmpty ?? false) ||
+        (message.replyParentUserLogin?.isNotEmpty ?? false);
+
+    for (var i = 0; i < message.tokens.length; i++) {
+      var token = message.tokens[i];
+      var text = token.data;
+
+      if (isReply && i == 0 && token.type == twitch.MessageTokenType.Text) {
+        String t = text.toString();
+        String? target;
+        if (message.replyParentDisplayName != null &&
+            t.startsWith('@${message.replyParentDisplayName}')) {
+          target = message.replyParentDisplayName;
+        } else if (message.replyParentUserLogin != null &&
+            t.startsWith('@${message.replyParentUserLogin}')) {
+          target = message.replyParentUserLogin;
+        }
+
+        if (target != null) {
+          if (t.startsWith('@$target ')) {
+            text = t.substring(target.length + 2);
+          } else if (t == '@$target') {
+            text = '';
+          }
+        }
+      }
+
       switch (token.type) {
         case twitch.MessageTokenType.Text:
           spans.add(
             TextSpan(
-              text: '${token.data} ',
+              text: '$text ',
               style: TextStyle(
                 color: (message.user == null || message.action) ? color : null,
                 shadows: shadows,
@@ -404,18 +432,46 @@ class ChatMessage extends StatelessWidget {
             );
           },
           onLongPress: () async {
-            await Clipboard.setData(ClipboardData(text: message.body ?? ''));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                behavior: SnackBarBehavior.floating,
-                content: Text('Message copied to clipboard!'),
-                action: SnackBarAction(
-                  label: 'Paste',
-                  onPressed: () {
-                    gkey?.currentState?.appendText(message.body!);
-                  },
-                ),
-              ),
+            await showModalBottomSheet(
+              context: context,
+              builder: (context) {
+                return SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.copy),
+                        title: Text('Copy Message'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await Clipboard.setData(
+                              ClipboardData(text: message.body ?? ''));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              content: Text('Message copied to clipboard!'),
+                              action: SnackBarAction(
+                                label: 'Paste',
+                                onPressed: () {
+                                  gkey?.currentState?.appendText(message.body!);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.reply),
+                        title: Text('Reply'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          gkey?.currentState?.replyTo(message);
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
           // onLongPress: () async => await Clipboard.setData(ClipboardData(text: message.body)),

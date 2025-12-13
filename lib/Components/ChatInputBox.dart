@@ -37,11 +37,19 @@ class ChatInputBoxState extends State<ChatInputBox> {
   TextEditingController textEditingController = TextEditingController();
   FocusNode focusNode = FocusNode();
   Timer? timer;
+  twitch.Message? replyMessage;
 
   void appendText(String str) {
     setState(() {
       textEditingController.text =
           '${textEditingController.text}${textEditingController.text.isNotEmpty ? ' ' : ''}$str';
+    });
+  }
+
+  void replyTo(twitch.Message message) {
+    setState(() {
+      replyMessage = message;
+      focusNode.requestFocus();
     });
   }
 
@@ -144,8 +152,11 @@ class ChatInputBoxState extends State<ChatInputBox> {
       );
     }
 
-    widget.channel?.send(text);
-    if (remove) textEditingController.clear();
+    widget.channel?.send(text, replyToId: replyMessage?.id);
+    if (remove) {
+      textEditingController.clear();
+      replyMessage = null;
+    }
     setState(() {});
   }
 
@@ -195,6 +206,34 @@ class ChatInputBoxState extends State<ChatInputBox> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: autocompletionItems,
+                    ),
+                  ),
+                if (replyMessage != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0, vertical: 4.0),
+                    color: Theme.of(context).colorScheme.secondary.withAlpha(20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.reply, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Replying to ${replyMessage!.user?.displayName ?? 'unknown'}: ${replyMessage!.body}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, size: 16),
+                          onPressed: () {
+                            setState(() {
+                              replyMessage = null;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 Container(

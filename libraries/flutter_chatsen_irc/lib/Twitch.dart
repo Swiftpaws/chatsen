@@ -781,7 +781,7 @@ class Channel {
         .forEach((listener) => listener.onChannelStateChange(this, state));
   }
 
-  void send(String message, {bool action = false}) async {
+  void send(String message, {bool action = false, String? replyToId}) async {
     // TODO: Setup buckets per account
     // TODO: Handle whispers
 
@@ -789,7 +789,7 @@ class Channel {
     var zeroWidthJoiner = String.fromCharCodes(Runes('\u{200d}'));
     message = message.replaceAll(zeroWidthJoiner, replacement);
 
-    if (action) return send('ACTION $message');
+    if (action) return send('ACTION $message', replyToId: replyToId);
 
     if (receiver == transmitter) {
       transmitter?.send(
@@ -814,8 +814,12 @@ class Channel {
     } else {
       var lastMessageByTransmitter = messages.lastWhereOrNull(
           (element) => element.user?.id == transmitter!.credentials!.id);
+      var tags = '';
+      if (replyToId != null) {
+        tags = '@reply-parent-msg-id=$replyToId ';
+      }
       transmitter?.send(
-          'PRIVMSG $name :$message${(lastMessageByTransmitter?.body == message) ? ' ${utf8.decode([
+          '${tags}PRIVMSG $name :$message${(lastMessageByTransmitter?.body == message) ? ' ${utf8.decode([
                   0xF3,
                   0xA0,
                   0x80,

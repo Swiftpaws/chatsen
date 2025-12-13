@@ -783,6 +783,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
   }
 
   @override
+  void onHistoryLoading(twitch.Channel channel) {}
+
+  @override
   void onHistoryLoaded(twitch.Channel channel) {}
 
   @override

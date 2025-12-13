@@ -14,6 +14,7 @@ abstract class Listener {
   void onConnectionStateChange(Connection connection, ConnectionState state);
   void onChannelStateChange(Channel channel, ChannelState state);
   void onMessage(Channel? channel, Message message);
+  void onHistoryLoading(Channel channel);
   void onHistoryLoaded(Channel channel);
   void onWhisper(Channel channel, Message message);
 }
@@ -416,6 +417,8 @@ class Channel {
   String? name;
   int? id;
 
+  bool historyLoading = false;
+
   List<Message> messages = [];
   List<Emote> emotes = [];
   List<Badge?> badges = [];
@@ -434,6 +437,9 @@ class Channel {
   }
 
   Future<void> loadHistory() async {
+    historyLoading = true;
+    client!.listeners.forEach((listener) => listener.onHistoryLoading(this));
+
     if (!client!.useRecentMessages) {
       var chatMessage = Message(
         channel: this,
@@ -445,6 +451,8 @@ class Channel {
       messages.add(chatMessage);
       if (messages.length > 1000)
         messages.removeRange(0, messages.length - 1000);
+      
+      historyLoading = false;
       client!.listeners.forEach((listener) => listener.onHistoryLoaded(this));
       return;
     }
@@ -513,6 +521,7 @@ class Channel {
         messages.removeRange(0, messages.length - 1000);
     }
 
+    historyLoading = false;
     client!.listeners.forEach((listener) => listener.onHistoryLoaded(this));
   }
 

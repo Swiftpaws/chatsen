@@ -135,6 +135,8 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
               ),
             ),
           ),
+        if (widget.channel?.historyLoading ?? false)
+          Center(child: CircularProgressIndicator()),
         Align(
           alignment: Alignment.bottomCenter,
           child: Column(
@@ -211,6 +213,12 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
   @override
   void onMessage(twitch.Channel? channel, twitch.Message message) {
     if (channel != widget.channel || !shouldScroll) return;
+    setState(() {});
+  }
+
+  @override
+  void onHistoryLoading(twitch.Channel channel) {
+    if (channel != widget.channel) return;
     setState(() {});
   }
 

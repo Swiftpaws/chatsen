@@ -27,7 +27,7 @@ class NetworkImageW extends StatelessWidget {
           scale: scale ?? 1.0,
           cacheKey: cache ? null : '$url:${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}',
         ),
-        filterQuality: FilterQuality.high,
+        filterQuality: FilterQuality.low,
         width: width,
         height: height,
         fit: fit,

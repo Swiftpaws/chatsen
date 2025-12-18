@@ -148,9 +148,12 @@ class HomeDrawer extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Container(
-                      width: 2.0,
-                      height: 48.0,
-                      color: Theme.of(context).dividerColor,
+                      width: 4.0,
+                      height: 64.0,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                        borderRadius: BorderRadius.circular(2.0),
+                      ),
                     ),
                   ),
                   Container(

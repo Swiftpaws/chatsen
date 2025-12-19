@@ -2,7 +2,8 @@
 <img align="middle" height="96" src="assets/ayyybubu/forsenShrimp/original.png">
 <p>
 <h1 align="middle">Chatsen</h1>
-
+<h2>!Attention! Heavy vibecoding</h2>
+<p>Im just doing this because of lack of alternatives right now, not intended for distribution</p>
 <p align="middle" float="left">
   <a href="https://chatsen.app/discord"><img src="https://img.shields.io/discord/758710852756570153.svg?label=&logo=discord&logoColor=ffffff&color=5865F2&labelColor=5C5C5C"></a>
   <a href="https://hanadigital.github.io/grev/?user=chatsen&repo=chatsen"><img src="https://img.shields.io/github/downloads/chatsen/chatsen/total?color=23B14D"></a>

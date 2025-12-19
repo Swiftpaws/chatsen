@@ -440,7 +440,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 4.0),
                     child: Text(
                       '${entryGroup.key}',
-                      style: Theme.of(context).textTheme.button!.copyWith(color: Theme.of(context).colorScheme.primary),
+                      style: Theme.of(context).textTheme.labelLarge!.copyWith(color: Theme.of(context).colorScheme.primary),
                     ),
                   ),
                   for (var entry in entryGroup.value) entry,
@@ -451,38 +451,36 @@ class _SettingsPageState extends State<SettingsPage> {
               return CustomScrollView(
                 slivers: <Widget>[
                   SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 128.0 * 1.5,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0) + EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(height: 24.0),
-                            Row(
-                              children: [
-                                // Container(
-                                //   width: 24.0,
-                                //   height: 24.0,
-                                //   child: IconButton(
-                                //     icon: Icon((Platform.isIOS || Platform.isMacOS) ? Icons.arrow_back_ios : Icons.arrow_back),
-                                //     onPressed: () => Navigator.of(context).pop(),
-                                //     padding: EdgeInsets.zero,
-                                //     iconSize: 24.0,
-                                //   ),
-                                // ),
-                                IconButton(
-                                  icon: Icon((Platform.isIOS || Platform.isMacOS) ? Icons.arrow_back_ios : Icons.arrow_back),
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  padding: EdgeInsets.zero,
-                                  iconSize: 24.0,
-                                ),
-                                Spacer(),
-                                // IconButton(
-                                //   icon: Icon(Icons.web),
-                                //   onPressed: () => launch('https://twitter.com/chatsenapp'),
-                                // ),
-                                IconButton(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.0) + EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 24.0),
+                          Row(
+                            children: [
+                              // Container(
+                              //   width: 24.0,
+                              //   height: 24.0,
+                              //   child: IconButton(
+                              //     icon: Icon((Platform.isIOS || Platform.isMacOS) ? Icons.arrow_back_ios : Icons.arrow_back),
+                              //     onPressed: () => Navigator.of(context).pop(),
+                              //     padding: EdgeInsets.zero,
+                              //     iconSize: 24.0,
+                              //   ),
+                              // ),
+                              IconButton(
+                                icon: Icon((Platform.isIOS || Platform.isMacOS) ? Icons.arrow_back_ios : Icons.arrow_back),
+                                onPressed: () => Navigator.of(context).pop(),
+                                padding: EdgeInsets.zero,
+                                iconSize: 24.0,
+                              ),
+                              Spacer(),
+                              // IconButton(
+                              //   icon: Icon(Icons.web),
+                              //   onPressed: () => launch('https://twitter.com/chatsenapp'),
+                              // ),
+                              /*IconButton(
                                   icon: Icon(FontAwesomeIcons.twitter),
                                   onPressed: () => launch('https://twitter.com/chatsenapp'),
                                 ),
@@ -497,21 +495,20 @@ class _SettingsPageState extends State<SettingsPage> {
                                 IconButton(
                                   icon: Icon(FontAwesomeIcons.patreon),
                                   onPressed: () => launch('https://patreon.com/chatsen'),
-                                ),
-                              ],
+                                ),*/
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Text(
+                              'Settings',
+                              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
                             ),
-                            Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                'Settings',
-                                style: Theme.of(context).textTheme.headline4!.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          SizedBox(height: 16.0),
+                        ],
                       ),
                     ),
                   ),
@@ -519,10 +516,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     // pinned: true,
                     floating: true,
                     delegate: CustomSliverAppBarDelegate(
-                      minHeight: 64.0 + MediaQuery.of(context).padding.top,
-                      maxHeight: 64.0 + MediaQuery.of(context).padding.top,
+                      minHeight: 64.0,
+                      maxHeight: 64.0,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0) + EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                         child: Material(
                           borderRadius: BorderRadius.circular(64.0),
                           color: Theme.of(context).colorScheme.surface,
@@ -554,6 +551,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
+                  /*
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -580,12 +578,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                   children: [
                                     Text(
                                       'Chatsen is currently work-in-progress!',
-                                      style: Theme.of(context).textTheme.subtitle1,
+                                      style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     SizedBox(height: 2.0),
                                     Text(
                                       'Create an issue on GitHub or ask on Discord if you encounter a problem.',
-                                      style: Theme.of(context).textTheme.subtitle2,
+                                      style: Theme.of(context).textTheme.titleSmall,
                                     ),
                                     SizedBox(height: 4.0),
                                     Text(
@@ -627,12 +625,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                   children: [
                                     Text(
                                       'Chatsen is looking for translators!',
-                                      style: Theme.of(context).textTheme.subtitle1,
+                                      style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     SizedBox(height: 2.0),
                                     Text(
                                       'Join the Discord server if you are interested in translating Chatsen to your language.',
-                                      style: Theme.of(context).textTheme.subtitle2,
+                                      style: Theme.of(context).textTheme.titleSmall,
                                     ),
                                   ],
                                 ),
@@ -643,6 +641,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
+                  */
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (BuildContext context, int index) => listChildren[index],

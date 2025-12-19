@@ -24,11 +24,11 @@ class Tile extends StatelessWidget {
           iconTheme: Theme.of(context).iconTheme.copyWith(
                 color: Theme.of(context).hintColor,
               ),
-          textTheme: Theme.of(context).textTheme.copyWith(
-                subtitle2: Theme.of(context).textTheme.subtitle2!.copyWith(
-                      color: Theme.of(context).hintColor,
-                    ),
-              ),
+        textTheme: Theme.of(context).textTheme.copyWith(
+          bodySmall: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).hintColor,
+          ),
+        ),
         ),
         child: Builder(
           builder: (context) => InkWell(
@@ -48,12 +48,12 @@ class Tile extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.subtitle1,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (subtitle != null)
                           Text(
                             subtitle!,
-                            style: Theme.of(context).textTheme.subtitle2,
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                       ],
                     ),

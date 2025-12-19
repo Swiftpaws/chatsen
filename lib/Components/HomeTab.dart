@@ -22,30 +22,37 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tab(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('${channel.name!.replaceFirst('#', '')}'),
-            Container(
-              width: 32.0,
-              height: 32.0,
-              child: InkWell(
-                onTap: () async {
-                  await ChannelCloseModal.show(context, name: channel.name!, onLeave: () async {
-                    client!.partChannels([channel]);
-                    var channelsBox = await Hive.openBox('Channels');
-                    await channelsBox.clear();
-                    await channelsBox.addAll(client!.channels.map((channel) => channel.name));
-                    refresh();
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 1.0),
-                  child: Icon((Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.xmark : Icons.close),
+        child: GestureDetector(
+          onLongPress: () async {
+            channel.messages.clear();
+            refresh();
+            await channel.loadHistory();
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${channel.name!.replaceFirst('#', '')}'),
+              Container(
+                width: 32.0,
+                height: 32.0,
+                child: InkWell(
+                  onTap: () async {
+                    await ChannelCloseModal.show(context, name: channel.name!, onLeave: () async {
+                      client!.partChannels([channel]);
+                      var channelsBox = await Hive.openBox('Channels');
+                      await channelsBox.clear();
+                      await channelsBox.addAll(client!.channels.map((channel) => channel.name));
+                      refresh();
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 1.0),
+                    child: Icon((Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.xmark : Icons.close),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
 }

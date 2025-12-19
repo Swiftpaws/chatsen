@@ -66,13 +66,13 @@ class TitleBarHide extends StatefulWidget {
 class _TitleBarHideState extends State<TitleBarHide> {
   @override
   void initState() {
-    SystemChrome.setEnabledSystemUIOverlays([]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     super.initState();
   }
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     // SystemChrome.restoreSystemUIOverlays();
     super.dispose();
   }
@@ -81,11 +81,59 @@ class _TitleBarHideState extends State<TitleBarHide> {
   Widget build(BuildContext context) => widget.child;
 }
 
-class _HomePageState extends State<HomePage> implements twitch.Listener {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver implements twitch.Listener {
   twitch.Client client = twitch.Client();
   Future<bool>? updateFuture;
   bool immersive = true;
   // String ffz = '';
+
+  DateTime? lastPausedAt;
+  Timer? resumeHistoryTimer;
+  bool resumeHistoryLoading = false;
+
+  Future<void> reloadRecentMessagesHistory() async {
+    if (!mounted || resumeHistoryLoading) return;
+    resumeHistoryLoading = true;
+
+    try {
+      var settingsState = BlocProvider.of<Settings>(context).state;
+      if (settingsState is SettingsLoaded) {
+        client.useRecentMessages = settingsState.historyUseRecentMessages;
+      }
+    } catch (e) {}
+
+    if (!client.useRecentMessages) {
+      resumeHistoryLoading = false;
+      return;
+    }
+
+    for (final channel in client.channels) {
+      try {
+        await channel.loadHistory();
+      } catch (e) {}
+    }
+
+    resumeHistoryLoading = false;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      lastPausedAt = DateTime.now();
+      resumeHistoryTimer?.cancel();
+      return;
+    }
+
+    if (state == AppLifecycleState.resumed) {
+      final last = lastPausedAt;
+      if (last != null && DateTime.now().difference(last) < Duration(milliseconds: 500)) return;
+
+      resumeHistoryTimer?.cancel();
+      resumeHistoryTimer = Timer(Duration(milliseconds: 350), () {
+        reloadRecentMessagesHistory();
+      });
+    }
+  }
 
   Future<void> loadChannelHistory() async {
     var channels = await Hive.openBox('Channels');
@@ -95,6 +143,8 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
 
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
+
     Future.delayed(Duration(milliseconds: 200)).then(
       // Should observe events instead, serves as a quick fix.
       (t) {
@@ -226,7 +276,7 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
     //   });
     // });
 
-    SchedulerBinding.instance!.addPostFrameCallback((_) async {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
       // UpdateModal.searchForUpdate(context);
       var settingsState = BlocProvider.of<Settings>(context).state;
       if (settingsState is SettingsLoaded && settingsState.setupScreen) {
@@ -243,6 +293,8 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
 
   @override
   void dispose() {
+    resumeHistoryTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     client.listeners.remove(this);
     super.dispose();
   }
@@ -256,8 +308,8 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
         child: BlocBuilder<StreamOverlayBloc, StreamOverlayState>(
           builder: (context, state) {
             // ignore: invalid_use_of_protected_member
-            if (!DefaultTabController.of(context)!.hasListeners) {
-              DefaultTabController.of(context)!.addListener(() {
+            if (!DefaultTabController.of(context).hasListeners) {
+              DefaultTabController.of(context).addListener(() {
                 setState(() {});
               });
             }
@@ -310,7 +362,7 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
               extendBodyBehindAppBar: true,
               drawer: Builder(
                 builder: (context) {
-                  var currentChannel = client.channels.isNotEmpty ? client.channels[DefaultTabController.of(context)!.index] : null;
+                  var currentChannel = client.channels.isNotEmpty ? client.channels[DefaultTabController.of(context).index] : null;
                   return HomeDrawer(
                     client: client,
                     channel: currentChannel,
@@ -349,8 +401,12 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: TabBar(
-                                      labelPadding: EdgeInsets.only(left: 8.0),
+                                      tabAlignment: TabAlignment.start,
+                                      padding: EdgeInsets.zero,
+                                      labelPadding: EdgeInsets.symmetric(horizontal: 8.0),
                                       isScrollable: true,
+                                      dividerColor: Colors.transparent,
+                                      dividerHeight: 0,
                                       tabs: client.channels
                                           .map(
                                             (channel) => HomeTab(
@@ -727,6 +783,9 @@ class _HomePageState extends State<HomePage> implements twitch.Listener {
   }
 
   @override
+  void onHistoryLoading(twitch.Channel channel) {}
+
+  @override
   void onHistoryLoaded(twitch.Channel channel) {}
 
   @override
@@ -754,10 +813,10 @@ class Tutorial extends StatelessWidget {
         child: Column(
           children: [
             Icon(Icons.not_started, size: 48.0, color: Theme.of(context).colorScheme.primary),
-            Text('Getting started', style: Theme.of(context).textTheme.headline5),
+            Text('Getting started', style: Theme.of(context).textTheme.headlineSmall),
             // Text('To get started, you can join a channel by pressing the + button below.', textAlign: TextAlign.center),
             // SizedBox(height: 32.0),
-            // Text('Help', style: Theme.of(context).textTheme.headline5),
+            // Text('Help', style: Theme.of(context).textTheme.headlineSmall),
             SizedBox(height: 16.0),
             Row(
               children: [
@@ -783,7 +842,7 @@ class Tutorial extends StatelessWidget {
               ],
             ),
             SizedBox(height: 32.0),
-            Text('Quick actions', style: Theme.of(context).textTheme.headline5),
+            Text('Quick actions', style: Theme.of(context).textTheme.headlineSmall),
             SizedBox(height: 16.0),
             Container(
               constraints: BoxConstraints(maxWidth: 128.0 * 1.6),

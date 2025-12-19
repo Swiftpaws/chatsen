@@ -22,38 +22,40 @@ class ThemeManager {
   };
 
   static ThemeData buildTheme(Brightness brightness, String color, {bool highContrast = false}) {
-    var baseColorScheme = brightness == Brightness.light ? ColorScheme.light() : ColorScheme.dark();
-    var colorScheme = ColorScheme.fromSwatch(
-      primarySwatch: colors[color]!.first,
-      accentColor: colors[color]!.last,
+    final seedColor = colors[color]!.first as Color;
+
+    final baseScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
       brightness: brightness,
-      backgroundColor: brightness == Brightness.dark ? (highContrast ? Colors.black : Colors.grey[900]) : Colors.grey[100],
-    ).copyWith(
-      surface: brightness == Brightness.dark ? (highContrast ? Color.fromARGB(255, 16, 16, 16) : Colors.grey[850]) : baseColorScheme.surface,
     );
-    var themeData = ThemeData.from(colorScheme: colorScheme);
+
+    final background = brightness == Brightness.dark ? (highContrast ? Colors.black : Colors.grey[900]!) : Colors.grey[100]!;
+    final surface = brightness == Brightness.dark ? (highContrast ? const Color.fromARGB(255, 16, 16, 16) : Colors.grey[850]!) : baseScheme.surface;
+
+    final colorScheme = baseScheme.copyWith(
+      background: background,
+      surface: surface,
+    );
+
+    final themeData = ThemeData.from(colorScheme: colorScheme, useMaterial3: true);
+
     return themeData.copyWith(
-      toggleableActiveColor: colorScheme.primary,
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.primary,
       ),
       appBarTheme: AppBarTheme(
-        iconTheme: IconThemeData(
+        backgroundColor: colorScheme.surface,
+        foregroundColor: themeData.hintColor,
+        iconTheme: IconThemeData(color: themeData.hintColor),
+        shadowColor: Colors.black45,
+        titleTextStyle: themeData.textTheme.titleLarge?.copyWith(
+          fontSize: 20.0,
+          fontWeight: FontWeight.w500,
           color: themeData.hintColor,
         ),
-        shadowColor: Colors.black45,
-        color: colorScheme.surface,
-        textTheme: TextTheme(
-          headline6: TextStyle().copyWith(
-            fontSize: 20.0,
-            fontWeight: FontWeight.w500,
-            color: themeData.hintColor,
-          ),
-        ),
-        brightness: ThemeData.estimateBrightnessForColor(colorScheme.surface),
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         indicator: UnderlineTabIndicator(
           borderSide: BorderSide(width: 0.0, color: Colors.transparent),
         ),

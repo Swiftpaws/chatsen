@@ -19,15 +19,23 @@ class NetworkImageW extends StatelessWidget {
     this.cache = true,
   }) : super(key: key);
 
+  bool get _isGif {
+    final uri = Uri.tryParse(url);
+    final path = (uri?.path ?? url.split(RegExp(r'[?#]')).first).toLowerCase();
+    return path.endsWith('.gif');
+  }
+
   @override
   Widget build(BuildContext context) => Image(
         // url,
         image: CachedNetworkImageProvider(
           url,
           scale: scale ?? 1.0,
-          cacheKey: cache ? null : '$url:${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}',
+          cacheKey: cache
+              ? null
+              : '$url:${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}',
         ),
-        filterQuality: FilterQuality.high,
+        filterQuality: _isGif ? FilterQuality.none : FilterQuality.low,
         width: width,
         height: height,
         fit: fit,

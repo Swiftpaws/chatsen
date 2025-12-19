@@ -126,6 +126,9 @@ class _WhispersPageState extends State<WhispersPage> implements twitch.Listener 
   void onConnectionStateChange(twitch.Connection connection, twitch.ConnectionState state) {}
 
   @override
+  void onHistoryLoading(twitch.Channel channel) {}
+
+  @override
   void onHistoryLoaded(twitch.Channel channel) {}
 
   @override

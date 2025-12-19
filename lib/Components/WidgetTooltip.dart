@@ -95,13 +95,11 @@ class WidgetTooltip extends StatefulWidget {
   ///
   /// The tooltip shape defaults to a rounded rectangle with a border radius of
   /// 4.0. Tooltips will also default to an opacity of 90% and with the color
-  /// [Colors.grey[700]] if [ThemeData.brightness] is [Brightness.dark], and
   /// [Colors.white] if it is [Brightness.light].
   final Decoration? decoration;
 
   /// The style to use for the message of the tooltip.
   ///
-  /// If null, the message's [TextStyle] will be determined based on
   /// [ThemeData]. If [ThemeData.brightness] is set to [Brightness.dark],
   /// [TextTheme.bodyText2] of [ThemeData.textTheme] will be used with
   /// [Colors.white]. Otherwise, if [ThemeData.brightness] is set to
@@ -378,7 +376,7 @@ class _WidgetTooltipState extends State<WidgetTooltip> with SingleTickerProvider
     TextStyle defaultTextStyle;
     BoxDecoration defaultDecoration;
     if (theme.brightness == Brightness.dark) {
-      defaultTextStyle = theme.textTheme.bodyText2!.copyWith(
+      defaultTextStyle = theme.textTheme.bodyMedium!.copyWith(
         // ??
         color: Colors.black,
         fontSize: _getDefaultFontSize(),
@@ -388,7 +386,7 @@ class _WidgetTooltipState extends State<WidgetTooltip> with SingleTickerProvider
         borderRadius: const BorderRadius.all(Radius.circular(4)),
       );
     } else {
-      defaultTextStyle = theme.textTheme.bodyText2!.copyWith(
+      defaultTextStyle = theme.textTheme.bodyMedium!.copyWith(
         // ?
         color: Colors.white,
         fontSize: _getDefaultFontSize(),

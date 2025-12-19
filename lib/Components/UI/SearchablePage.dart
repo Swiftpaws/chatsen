@@ -70,8 +70,8 @@ class SearchablePage extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8.0),
                             child: Text(
-                              'Settings',
-                              style: Theme.of(context).textTheme.headline4!.copyWith(
+                                'Settings',
+                                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                                     color: Theme.of(context).colorScheme.onSurface,
                                   ),
                             ),

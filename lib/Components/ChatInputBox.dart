@@ -37,10 +37,19 @@ class ChatInputBoxState extends State<ChatInputBox> {
   TextEditingController textEditingController = TextEditingController();
   FocusNode focusNode = FocusNode();
   Timer? timer;
+  twitch.Message? replyMessage;
 
   void appendText(String str) {
     setState(() {
-      textEditingController.text = '${textEditingController.text}${textEditingController.text.isNotEmpty ? ' ' : ''}$str';
+      textEditingController.text =
+          '${textEditingController.text}${textEditingController.text.isNotEmpty ? ' ' : ''}$str';
+    });
+  }
+
+  void replyTo(twitch.Message message) {
+    setState(() {
+      replyMessage = message;
+      focusNode.requestFocus();
     });
   }
 
@@ -54,9 +63,15 @@ class ChatInputBoxState extends State<ChatInputBox> {
   }
 
   List<Widget> getAutoCompletionItems() => [
-        if (textEditingController.text.split(' ').last.length >= 2 && !textEditingController.text.endsWith(' '))
-          for (var emote in widget.client!.emotes + widget.channel!.emotes + widget.channel!.transmitter!.emotes + widget.client!.emojis)
-            if ('${false ? ':' : ''}${emote.name}'.toLowerCase().contains(textEditingController.text.split(' ').last.toLowerCase()) && (false ? textEditingController.text.startsWith(':') : true))
+        if (textEditingController.text.split(' ').last.length >= 2 &&
+            !textEditingController.text.endsWith(' '))
+          for (var emote in widget.client!.emotes +
+              widget.channel!.emotes +
+              widget.channel!.transmitter!.emotes +
+              widget.client!.emojis)
+            if ('${false ? ':' : ''}${emote.name}'.toLowerCase().contains(
+                    textEditingController.text.split(' ').last.toLowerCase()) &&
+                (false ? textEditingController.text.startsWith(':') : true))
               WidgetTooltip(
                 // message: '${emote.name}',
                 message: Padding(
@@ -80,10 +95,13 @@ class ChatInputBoxState extends State<ChatInputBox> {
 
                 child: InkWell(
                   onTap: () async {
-                    List<String?> splits = textEditingController.text.split(' ');
+                    List<String?> splits =
+                        textEditingController.text.split(' ');
                     splits.last = (emote.alt ?? emote.name); // emote.name;
                     textEditingController.text = splits.join(' ') + ' ';
-                    textEditingController.selection = TextSelection.fromPosition(TextPosition(offset: textEditingController.text.length));
+                    textEditingController.selection =
+                        TextSelection.fromPosition(TextPosition(
+                            offset: textEditingController.text.length));
                     focusNode.requestFocus();
                     setState(() {});
                   },
@@ -102,7 +120,9 @@ class ChatInputBoxState extends State<ChatInputBox> {
     text = text.trim();
 
     // Command parser
-    var firstCommand = BlocProvider.of<CommandsCubit>(context).state.firstWhereOrNull((command) => text.startsWith(command.trigger));
+    var firstCommand = BlocProvider.of<CommandsCubit>(context)
+        .state
+        .firstWhereOrNull((command) => text.startsWith(command.trigger));
     if (firstCommand != null) {
       var textSplits = text.substring(firstCommand.trigger.length).split(' ');
       text = firstCommand.command;
@@ -132,14 +152,18 @@ class ChatInputBoxState extends State<ChatInputBox> {
       );
     }
 
-    widget.channel?.send(text);
-    if (remove) textEditingController.clear();
+    widget.channel?.send(text, replyToId: replyMessage?.id);
+    if (remove) {
+      textEditingController.clear();
+      replyMessage = null;
+    }
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    var autocompletionItems = kUnverifiedVersion ? <Widget>[] : getAutoCompletionItems();
+    var autocompletionItems =
+        kUnverifiedVersion ? <Widget>[] : getAutoCompletionItems();
     var autocompletionItemsUsers = getAutoCompletionUsers();
     var autocompletionCommands = getAutoCompletionCommands();
 
@@ -152,11 +176,14 @@ class ChatInputBoxState extends State<ChatInputBox> {
         ),
         Padding(
           // MediaQuery.of(context).padding.
-          padding: EdgeInsets.only(left: MediaQuery.of(context).padding.left, right: MediaQuery.of(context).padding.right),
+          padding: EdgeInsets.only(
+              left: MediaQuery.of(context).padding.left,
+              right: MediaQuery.of(context).padding.right),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (kDebugMode || widget.channel?.transmitter?.credentials?.token != null) ...[
+              if (kDebugMode ||
+                  widget.channel?.transmitter?.credentials?.token != null) ...[
                 if (autocompletionCommands.isNotEmpty)
                   Container(
                     height: 40.0,
@@ -181,30 +208,69 @@ class ChatInputBoxState extends State<ChatInputBox> {
                       children: autocompletionItems,
                     ),
                   ),
+                if (replyMessage != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0, vertical: 4.0),
+                    color: Theme.of(context).colorScheme.secondary.withAlpha(20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.reply, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Replying to ${replyMessage!.user?.displayName ?? 'unknown'}: ${replyMessage!.body}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, size: 16),
+                          onPressed: () {
+                            setState(() {
+                              replyMessage = null;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 Container(
                   // height: 64.0,
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
-                          maxLines: textEditingController.text.isEmpty ? 1 : null,
+                          maxLines:
+                              textEditingController.text.isEmpty ? 1 : null,
                           maxLength: 498,
                           key: key,
                           focusNode: focusNode,
                           controller: textEditingController,
                           autofocus: false,
+                          textInputAction: TextInputAction.send,
                           decoration: InputDecoration(
                             // contentPadding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8.0, horizontal: 8.0),
                             filled: false,
                             isDense: true,
-                            hintText: 'Message ${widget.channel!.name} as ${widget.channel!.transmitter!.credentials!.login}',
+                            hintText:
+                                'Message ${widget.channel!.name} as ${widget.channel!.transmitter!.credentials!.login}',
                             counterText: '',
                             // helperText: 'follow(420m)',
                             border: InputBorder.none,
                           ),
                           onChanged: (text) async => setState(() {}),
-                          onSubmitted: send,
+                          onEditingComplete: () {
+                            // Prevent the default behavior (unfocus) which dismisses the software keyboard.
+                            focusNode.requestFocus();
+                          },
+                          onSubmitted: (text) {
+                            send(text);
+                            focusNode.requestFocus();
+                          },
                         ),
                       ),
                       Container(
@@ -218,8 +284,13 @@ class ChatInputBoxState extends State<ChatInputBox> {
                             );
                           },
                           child: Icon(
-                            (Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.photo_fill : Icons.file_present,
-                            color: Theme.of(context).colorScheme.onSurface.withAlpha(64 * 3),
+                            (Platform.isMacOS || Platform.isIOS)
+                                ? CupertinoIcons.photo_fill
+                                : Icons.file_present,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withAlpha(64 * 3),
                           ),
                         ),
                       ),
@@ -234,15 +305,24 @@ class ChatInputBoxState extends State<ChatInputBox> {
                               backgroundColor: Colors.transparent,
                               builder: (context) => SafeArea(
                                 child: Padding(
-                                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                                  padding: EdgeInsets.only(
+                                      bottom: MediaQuery.of(context)
+                                          .viewInsets
+                                          .bottom),
                                   child: EmoteListModal(
                                     client: widget.client,
                                     channel: widget.channel,
                                     insertEmote: (emote) {
-                                      var splits = textEditingController.text.split(' ');
+                                      var splits =
+                                          textEditingController.text.split(' ');
                                       splits.last = emote!;
-                                      textEditingController.text = splits.join(' ') + ' ';
-                                      textEditingController.selection = TextSelection.fromPosition(TextPosition(offset: textEditingController.text.length));
+                                      textEditingController.text =
+                                          splits.join(' ') + ' ';
+                                      textEditingController.selection =
+                                          TextSelection.fromPosition(
+                                              TextPosition(
+                                                  offset: textEditingController
+                                                      .text.length));
                                       focusNode.requestFocus();
                                       Navigator.of(context).pop();
                                       setState(() {});
@@ -254,8 +334,13 @@ class ChatInputBoxState extends State<ChatInputBox> {
                             );
                           },
                           child: Icon(
-                            (Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.smiley : Icons.emoji_emotions_outlined,
-                            color: Theme.of(context).colorScheme.onSurface.withAlpha(64 * 3),
+                            (Platform.isMacOS || Platform.isIOS)
+                                ? CupertinoIcons.smiley
+                                : Icons.emoji_emotions_outlined,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withAlpha(64 * 3),
                           ),
                         ),
                       ),
@@ -285,8 +370,13 @@ class ChatInputBoxState extends State<ChatInputBox> {
                           child: InkWell(
                             onTap: () => send(textEditingController.text),
                             child: Icon(
-                              (Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.arrow_right_circle : Icons.send,
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(64 * 3),
+                              (Platform.isMacOS || Platform.isIOS)
+                                  ? CupertinoIcons.arrow_right_circle
+                                  : Icons.send,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withAlpha(64 * 3),
                             ),
                           ),
                         ),
@@ -304,18 +394,32 @@ class ChatInputBoxState extends State<ChatInputBox> {
   }
 
   List<Widget> getAutoCompletionUsers() {
-    final startsWithAt = textEditingController.text.split(' ').last.toLowerCase().startsWith('@');
+    final startsWithAt = textEditingController.text
+        .split(' ')
+        .last
+        .toLowerCase()
+        .startsWith('@');
     return [
-      if (textEditingController.text.split(' ').last.length >= 2 && !textEditingController.text.endsWith(' '))
-        for (var user in widget.channel!.users.values.expand((element) => element))
-          if ('${startsWithAt ? '@' : ''}$user'.toLowerCase().contains(textEditingController.text.split(' ').last.toLowerCase()) && (startsWithAt ? textEditingController.text.startsWith('@') : true))
+      if (textEditingController.text.split(' ').last.length >= 2 &&
+          !textEditingController.text.endsWith(' '))
+        for (var user
+            in widget.channel!.users.values.expand((element) => element))
+          if ('${startsWithAt ? '@' : ''}$user'.toLowerCase().contains(
+                  textEditingController.text.split(' ').last.toLowerCase()) &&
+              (startsWithAt
+                  ? textEditingController.text.startsWith('@')
+                  : true))
             InkWell(
               onTap: () async {
-                var settings = BlocProvider.of<Settings>(context).state as SettingsLoaded;
+                var settings =
+                    BlocProvider.of<Settings>(context).state as SettingsLoaded;
                 var splits = textEditingController.text.split(' ');
-                splits.last = ((settings.mentionWithAt || startsWithAt) ? '@' : '') + user;
+                splits.last =
+                    ((settings.mentionWithAt || startsWithAt) ? '@' : '') +
+                        user;
                 textEditingController.text = splits.join(' ') + ' ';
-                textEditingController.selection = TextSelection.fromPosition(TextPosition(offset: textEditingController.text.length));
+                textEditingController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: textEditingController.text.length));
                 focusNode.requestFocus();
                 setState(() {});
               },
@@ -330,14 +434,19 @@ class ChatInputBoxState extends State<ChatInputBox> {
   }
 
   List<Widget> getAutoCompletionCommands() => [
-        if (textEditingController.text.split(' ').last.isNotEmpty && !textEditingController.text.endsWith(' '))
-          for (var cmd in BlocProvider.of<CommandsCubit>(context).state.where((command) => command.trigger.toLowerCase().startsWith(textEditingController.text.toLowerCase())))
+        if (textEditingController.text.split(' ').last.isNotEmpty &&
+            !textEditingController.text.endsWith(' '))
+          for (var cmd in BlocProvider.of<CommandsCubit>(context).state.where(
+              (command) => command.trigger
+                  .toLowerCase()
+                  .startsWith(textEditingController.text.toLowerCase())))
             InkWell(
               onTap: () async {
                 var splits = textEditingController.text.split(' ');
                 splits.last = cmd.trigger;
                 textEditingController.text = splits.join(' ') + ' ';
-                textEditingController.selection = TextSelection.fromPosition(TextPosition(offset: textEditingController.text.length));
+                textEditingController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: textEditingController.text.length));
                 focusNode.requestFocus();
                 setState(() {});
               },
@@ -347,7 +456,8 @@ class ChatInputBoxState extends State<ChatInputBox> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(cmd.trigger, style: Theme.of(context).textTheme.headline5),
+                      Text(cmd.trigger,
+                          style: Theme.of(context).textTheme.headlineSmall),
                       Text(cmd.command),
                     ],
                   ),

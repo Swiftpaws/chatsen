@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
+import '/Components/UI/LoadingOverlay.dart';
 
 /// The [UserlistView] class is a view designed to hold the list of users currently connected to a channel. It can be refreshed with a pull-to-refresh swipe movement.
 class UserlistView extends StatefulWidget {
   final twitch.Channel? channel;
 
   const UserlistView({
-    Key? key,
+    super.key,
     required this.channel,
-  }) : super(key: key);
+  });
 
   @override
   _UserlistViewState createState() => _UserlistViewState();
@@ -89,7 +90,7 @@ class _UserlistViewState extends State<UserlistView> {
               ),
             );
           }
-          return Center(child: CircularProgressIndicator.adaptive());
+          return const LoadingOverlay(status: "Loading users...");
         },
       );
 }

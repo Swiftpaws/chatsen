@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:math';
 
+import '/Components/UI/LoadingOverlay.dart';
 import '/Components/UI/BlurModal.dart';
 import '/Components/UI/CustomSliverAppBarDelegate.dart';
 import '/Components/UI/NoAppBarBlur.dart';
@@ -13,13 +13,11 @@ import '/Theme/ThemeBloc.dart';
 import '/Theme/ThemeEvent.dart';
 import '/Theme/ThemeManager.dart';
 import '/Theme/ThemeState.dart';
-import '/Pages/BlockedTerms.dart';
 import '/Pages/BlockedUsers.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,12 +33,12 @@ class SettingsEntry extends StatelessWidget {
   final Function(BuildContext context, String? category, String title, String? description) builder;
 
   const SettingsEntry({
-    Key? key,
+    super.key,
     this.category,
     required this.title,
     this.description,
     required this.builder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) => builder(context, category, title, description);
@@ -50,9 +48,9 @@ class SettingsPage extends StatefulWidget {
   final twitch.Client client;
 
   const SettingsPage({
-    Key? key,
+    super.key,
     required this.client,
-  }) : super(key: key);
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -651,7 +649,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               );
             }
-            return Center(child: CircularProgressIndicator.adaptive());
+            return const LoadingOverlay(status: "Loading settings...");
           },
         ),
       );

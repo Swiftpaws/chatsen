@@ -11,6 +11,7 @@ import '/Components/ChatInputBox.dart';
 import '/Components/ChatMessage.dart';
 import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
 import '/Components/UI/WidgetBlur.dart';
+import '/Components/UI/LoadingOverlay.dart';
 import '/StreamOverlay/StreamOverlayBloc.dart';
 import '/StreamOverlay/StreamOverlayState.dart';
 
@@ -22,12 +23,12 @@ class ChatView extends StatefulWidget {
   // final Function(String)? addText;
 
   const ChatView({
-    Key? key,
+    super.key,
     required this.client,
     required this.channel,
     this.shadow = false,
     // this.addText,
-  }) : super(key: key);
+  });
 
   @override
   _ChatViewState createState() => _ChatViewState();
@@ -41,7 +42,7 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
 
   void scrollToEnd() {
     scrollController!.jumpTo(0);
-    SchedulerBinding.instance!.addPostFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       scrollController!.jumpTo(0);
     });
   }
@@ -136,7 +137,7 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
             ),
           ),
         if (widget.channel?.historyLoading ?? false)
-          Center(child: CircularProgressIndicator()),
+          const LoadingOverlay(status: "Loading history..."),
         Align(
           alignment: Alignment.bottomCenter,
           child: Column(

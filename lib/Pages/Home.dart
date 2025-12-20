@@ -16,7 +16,7 @@ import '../Consts.dart';
 import '/Accounts/AccountsCubit.dart';
 import '/Components/HomeEndDrawer.dart';
 import '/Components/Modal/SetupModal.dart';
-import '/Components/Modal/UpdateModal.dart';
+import '/Components/UI/LoadingOverlay.dart';
 import '/Components/UI/WidgetBlur.dart';
 import '/Mentions/MentionsCubit.dart';
 import '/Settings/Settings.dart';
@@ -90,6 +90,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
   DateTime? lastPausedAt;
   Timer? resumeHistoryTimer;
   bool resumeHistoryLoading = false;
+  bool _isLoading = true;
 
   Future<void> reloadRecentMessagesHistory() async {
     if (!mounted || resumeHistoryLoading) return;
@@ -137,8 +138,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
 
   Future<void> loadChannelHistory() async {
     var channels = await Hive.openBox('Channels');
-    await client.joinChannels(List<String>.from(channels.values));
-    setState(() {});
+    var joinedChannels = await client.joinChannels(List<String>.from(channels.values));
+
+    if (joinedChannels.isNotEmpty && client.useRecentMessages) {
+      await joinedChannels.first.loadHistory();
+
+      for (var i = 1; i < joinedChannels.length; i++) {
+        joinedChannels[i].loadHistory();
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -303,7 +317,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
   WebViewController? webViewController;
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
+  Widget build(BuildContext context) {
+    final content = DefaultTabController(
         length: client.channels.length,
         child: BlocBuilder<StreamOverlayBloc, StreamOverlayState>(
           builder: (context, state) {
@@ -723,6 +738,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
           },
         ),
       );
+
+    if (_isLoading) {
+      return Stack(
+        children: [
+          content,
+          const LoadingOverlay(status: "Loading history..."),
+        ],
+      );
+    }
+
+    return content;
+  }
 
   @override
   void onChannelStateChange(twitch.Channel channel, twitch.ChannelState state) {

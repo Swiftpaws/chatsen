@@ -33,6 +33,8 @@ class ChatMessage extends StatelessWidget {
   final Color? backgroundColor;
   final bool shadow;
   final GlobalKey<ChatInputBoxState>? gkey;
+  final Function(String)? onReplyClick;
+  final bool highlight;
 
   const ChatMessage({
     Key? key,
@@ -41,6 +43,8 @@ class ChatMessage extends StatelessWidget {
     this.backgroundColor,
     this.shadow = false,
     this.gkey,
+    this.onReplyClick,
+    this.highlight = false,
   }) : super(key: key);
 
   static final _leadingUrlPunctuationRegex = RegExp(r'^[\(\[\{<]+');
@@ -410,27 +414,16 @@ class ChatMessage extends StatelessWidget {
       //     return false;
       //   },
       key: ValueKey(message.id),
-      child: Container(
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: highlight ? 0 : 1000),
+        curve: Curves.easeOut,
         width: double.infinity,
-        color: message.mention
-            ? Theme.of(context).colorScheme.primary.withAlpha(48)
-            : backgroundColor,
+        color: highlight
+            ? Theme.of(context).colorScheme.secondary.withAlpha(128)
+            : (message.mention
+                ? Theme.of(context).colorScheme.primary.withAlpha(48)
+                : backgroundColor),
         child: InkWell(
-          onDoubleTap: () async {
-            await Clipboard.setData(ClipboardData(text: message.body ?? ''));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                behavior: SnackBarBehavior.floating,
-                content: Text('Message copied to clipboard!'),
-                action: SnackBarAction(
-                  label: 'Paste',
-                  onPressed: () {
-                    gkey?.currentState?.appendText(message.body!);
-                  },
-                ),
-              ),
-            );
-          },
           onLongPress: () async {
             await showModalBottomSheet(
               context: context,
@@ -468,6 +461,16 @@ class ChatMessage extends StatelessWidget {
                           gkey?.currentState?.replyTo(message);
                         },
                       ),
+                      if (message.replyParentMsgId != null &&
+                          onReplyClick != null)
+                        ListTile(
+                          leading: Icon(Icons.find_in_page),
+                          title: Text('Scroll to original message'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            onReplyClick!(message.replyParentMsgId!);
+                          },
+                        ),
                     ],
                   ),
                 );
@@ -510,7 +513,15 @@ class ChatMessage extends StatelessWidget {
                             fontStyle: FontStyle.italic,
                             shadows: shadows,
                             color: Colors.grey[400],
-                          ),
+                            ),
+                          recognizer: onReplyClick != null
+                              ? (TapGestureRecognizer()
+                                ..onTap = () {
+                                  if (message.replyParentMsgId != null) {
+                                    onReplyClick!(message.replyParentMsgId!);
+                                  }
+                                })
+                              : null,
                         ),
                       if (prefixText != null)
                         TextSpan(

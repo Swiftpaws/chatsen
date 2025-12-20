@@ -1,11 +1,12 @@
 import 'dart:io';
+import 'dart:async';
 
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '/BlockedUsers/BlockedUsersCubit.dart';
 import '/Settings/Settings.dart';
 import '/Settings/SettingsState.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '/Components/ChatInputBox.dart';
 import '/Components/ChatMessage.dart';
@@ -36,28 +37,44 @@ class ChatView extends StatefulWidget {
 class _ChatViewState extends State<ChatView> implements twitch.Listener {
   var gkey = GlobalKey<ChatInputBoxState>();
   bool shouldScroll = true;
-  ScrollController? scrollController;
-  double? scrollPosition;
+  final ItemScrollController itemScrollController = ItemScrollController();
+  final ItemPositionsListener itemPositionsListener =
+      ItemPositionsListener.create();
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
 
   void scrollToEnd() {
-    scrollController!.jumpTo(0);
-    SchedulerBinding.instance!.addPostFrameCallback((_) {
-      scrollController!.jumpTo(0);
-    });
+    if (itemScrollController.isAttached) {
+      itemScrollController.jumpTo(index: 0);
+    }
   }
 
   @override
   void initState() {
-    scrollController = ScrollController();
     widget.client?.listeners.add(this);
+    itemPositionsListener.itemPositions.addListener(_scrollListener);
     super.initState();
   }
 
   @override
   void dispose() {
-    scrollController?.dispose();
+    _highlightTimer?.cancel();
+    itemPositionsListener.itemPositions.removeListener(_scrollListener);
     widget.client?.listeners.remove(this);
     super.dispose();
+  }
+
+  void _scrollListener() {
+    final positions = itemPositionsListener.itemPositions.value;
+    if (positions.isNotEmpty) {
+      final isAtBottom = positions.any((element) => element.index == 0);
+
+      if (isAtBottom != shouldScroll) {
+        setState(() {
+          shouldScroll = isAtBottom;
+        });
+      }
+    }
   }
 
   @override
@@ -72,31 +89,42 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
               FocusManager.instance.primaryFocus?.unfocus();
             }
           },
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (scrollNotification) {
-              if (scrollNotification is ScrollStartNotification) {
-                if (shouldScroll != false) {
-                  shouldScroll = false;
-                  setState(() {});
-                }
-              } else if (scrollNotification is ScrollUpdateNotification || scrollNotification is ScrollEndNotification) {
-                if (scrollController!.position.pixels == scrollController!.position.minScrollExtent && shouldScroll != true) {
-                  shouldScroll = true;
-                  setState(() {});
-                }
-              }
-              return true;
-            },
-            child: BlocBuilder<Settings, SettingsState>(
-              builder: (context, state) {
-                var i = 0;
-                var blockedUsers = List<String>.from(BlocProvider.of<BlockedUsersCubit>(context).state).map((element) => element.toLowerCase()).toList();
-                return ListView(
-                  reverse: true,
-                  controller: scrollController,
-                  padding: MediaQuery.of(context).padding + (Platform.isMacOS ? EdgeInsets.only(top: 26.0) : EdgeInsets.zero) + EdgeInsets.only(bottom: (kDebugMode || widget.channel?.transmitter?.credentials?.token != null ? (36.0 + 4.0) : 0.0) + 8.0, top: 8.0),
-                  children: [
-                    for (var message in widget.channel!.messages.where((element) => !blockedUsers.contains(element.user?.login?.toLowerCase()))) ...[
+          child: BlocBuilder<Settings, SettingsState>(
+            builder: (context, state) {
+              var blockedUsers = List<String>.from(
+                      BlocProvider.of<BlockedUsersCubit>(context).state)
+                  .map((element) => element.toLowerCase())
+                  .toList();
+              var messages = widget.channel!.messages
+                  .where((element) => !blockedUsers
+                      .contains(element.user?.login?.toLowerCase()))
+                  .toList()
+                  .reversed
+                  .toList();
+
+              return ScrollablePositionedList.builder(
+                reverse: true,
+                itemScrollController: itemScrollController,
+                itemPositionsListener: itemPositionsListener,
+                padding: MediaQuery.of(context).padding +
+                    (Platform.isMacOS
+                        ? EdgeInsets.only(top: 26.0)
+                        : EdgeInsets.zero) +
+                    EdgeInsets.only(
+                        bottom: (kDebugMode ||
+                                    widget.channel?.transmitter?.credentials
+                                            ?.token !=
+                                        null
+                                ? (36.0 + 4.0)
+                                : 0.0) +
+                            8.0,
+                        top: 8.0),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  var message = messages[index];
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       if (state is SettingsLoaded && state.messageLines)
                         Container(
                           color: Theme.of(context).dividerColor,
@@ -104,16 +132,51 @@ class _ChatViewState extends State<ChatView> implements twitch.Listener {
                         ),
                       ChatMessage(
                         key: ObjectKey(message),
-                        backgroundColor: state is SettingsLoaded && state.messageAlternateBackground && (i++ % 2 == 0) ? Theme.of(context).dividerColor : null,
+                        backgroundColor: state is SettingsLoaded &&
+                                state.messageAlternateBackground &&
+                                ((messages.length - 1 - index) % 2 == 0)
+                            ? Theme.of(context).dividerColor
+                            : null,
                         message: message,
                         shadow: widget.shadow,
                         gkey: gkey,
+                        highlight: message.id == _highlightedMessageId,
+                        onReplyClick: (replyId) {
+                          final targetIndex =
+                              messages.indexWhere((m) => m.id == replyId);
+                          if (targetIndex != -1) {
+                            itemScrollController.scrollTo(
+                              index: targetIndex,
+                              duration: Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              alignment: 0.5,
+                            );
+                            setState(() {
+                              _highlightedMessageId = replyId;
+                            });
+                            _highlightTimer?.cancel();
+                            _highlightTimer =
+                                Timer(Duration(milliseconds: 1000), () {
+                              if (mounted) {
+                                setState(() {
+                                  _highlightedMessageId = null;
+                                });
+                              }
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Original message not found in loaded history.')),
+                            );
+                          }
+                        },
                       ),
                     ],
-                  ].reversed.toList(),
-                );
-              },
-            ),
+                  );
+                },
+              );
+            },
           ),
         ),
         if ((Platform.isMacOS ? 0.0 : MediaQuery.of(context).padding.top) > 0.0 && (MediaQuery.of(context).size.aspectRatio > 1.0 ? true : BlocProvider.of<StreamOverlayBloc>(context).state is StreamOverlayClosed))

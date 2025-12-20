@@ -4,44 +4,10 @@
 <h1 align="middle">Chatsen</h1>
 <h2>!Attention! Heavy vibecoding</h2>
 <p>Im just doing this because of lack of alternatives right now, not intended for distribution</p>
-<p align="middle" float="left">
-  <a href="https://chatsen.app/discord"><img src="https://img.shields.io/discord/758710852756570153.svg?label=&logo=discord&logoColor=ffffff&color=5865F2&labelColor=5C5C5C"></a>
-  <a href="https://hanadigital.github.io/grev/?user=chatsen&repo=chatsen"><img src="https://img.shields.io/github/downloads/chatsen/chatsen/total?color=23B14D"></a>
-  <a><img src="https://img.shields.io/github/license/chatsen/chatsen"></a>
-</p>
-<p align="middle" float="left">
-  <a href="https://apps.apple.com/us/app/chatsen/id1574037007"><img height="75" src="https://raw.githubusercontent.com/chatsen/chatsen/dev/assets/app_store_badge.png"></a>
-  <a href="https://play.google.com/store/apps/details?id=com.chatsen.chatsen"><img height="75" src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png"></a>
-</p>
 
-Chatsen is a cross-platform application that allows you to chat on Twitch with support for 3rd-party services such as 7TV, BTTV and FFZ.  
-It also features a built-in video player and a variety of other features, such as auto-completion, notifications (on supported platforms), whispers, and more to come!
-
-# Media
-<p align="middle" float="left">
-  <img src="https://raw.githubusercontent.com/chatsen/resources/master/assets/screenshots/1.png" width="200" />
-  <img src="https://raw.githubusercontent.com/chatsen/resources/master/assets/screenshots/2.png" width="200" />
-  <img src="https://raw.githubusercontent.com/chatsen/resources/master/assets/screenshots/3.png" width="200" />
-  <img src="https://raw.githubusercontent.com/chatsen/resources/master/assets/screenshots/4.png" width="200" />
-</p>
 
 The Chatsen logo was graciously made by @ayyybubu! You can find him on [Twitter](https://twitter.com/ayyybubu) or [Twitch](https://twitch.tv/ayyybubu)
 
-# Downloads
-You can find the latest release for supported platforms (iOS, Android) [here](https://github.com/Chatsen/chatsen/releases).
-
-# Store Releases
-- [x] [Play Store](https://play.google.com/store/apps/details?id=com.chatsen.chatsen)
-- [x] [App Store](https://apps.apple.com/us/app/chatsen/id1574037007)
-- [x] [Apple TestFlight](https://testflight.apple.com/join/I7Fm27MH)
-
-# Supported platforms
-- [x] Android 5+ (>=4.1 && <5.0 also supported but without login/video player)
-- [x] iOS 12.2+
-
-# Support and donations
-Support the project on Patreon and get some cool badges next to your username in return!
-https://www.patreon.com/chatsen
   
 <!-- # iOS Sideloading Guide
 - Install AltStore on your device https://altstore.io/
@@ -85,6 +51,3 @@ Since Chatsen interfaces with Twitch however, you are subject to their Privacy P
 
 # Contributions
 Chatsen currently does *not* take any pull requests or contributions. When this may change in the future, this notice will be updated and PR guidelines will be defined.
-
-# Contact
-- Discord: https://chatsen.app/discord

@@ -17,16 +17,19 @@ import '/StreamOverlay/StreamOverlayEvent.dart';
 import '/StreamOverlay/StreamOverlayState.dart';
 import '/Views/Userlist.dart';
 import 'package:flutter_chatsen_irc/Twitch.dart' as twitch;
+import 'package:hive/hive.dart';
 
 /// The [HomeDrawer] widget represents the drawer available on the home page. It features our [UserlistView] which displays all the users currently in a channel as well as giving us the way to access multiple options, accounts and features.
 class HomeDrawer extends StatelessWidget {
   final twitch.Client? client;
   final twitch.Channel? channel;
+  final VoidCallback? onChannelClose;
 
   const HomeDrawer({
     Key? key,
     required this.client,
     required this.channel,
+    this.onChannelClose,
   }) : super(key: key);
 
   @override
@@ -83,6 +86,57 @@ class HomeDrawer extends StatelessWidget {
                                   ),
                                 ),
                                 tooltip: 'Search in the current channel',
+                              ),
+                            if (channel != null)
+                              IconButton(
+                                icon: Icon((Platform.isMacOS || Platform.isIOS) ? CupertinoIcons.xmark : Icons.close),
+                                onPressed: () async {
+                                  var confirm = await (Platform.isIOS || Platform.isMacOS
+                                      ? showCupertinoDialog<bool>(
+                                          context: context,
+                                          builder: (context) => CupertinoAlertDialog(
+                                            title: Text('Close channel?'),
+                                            content: Text('Are you sure you want to close ${channel!.name}?'),
+                                            actions: [
+                                              CupertinoDialogAction(
+                                                child: Text('Cancel'),
+                                                onPressed: () => Navigator.of(context).pop(false),
+                                              ),
+                                              CupertinoDialogAction(
+                                                isDestructiveAction: true,
+                                                child: Text('Close'),
+                                                onPressed: () => Navigator.of(context).pop(true),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: Text('Close channel?'),
+                                            content: Text('Are you sure you want to close ${channel!.name}?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(context).pop(false),
+                                                child: Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.of(context).pop(true),
+                                                child: Text('Close'),
+                                              ),
+                                            ],
+                                          ),
+                                        ));
+
+                                  if (confirm == true) {
+                                    client!.partChannels([channel!]);
+                                    var channelsBox = await Hive.openBox('Channels');
+                                    await channelsBox.clear();
+                                    await channelsBox.addAll(client!.channels.map((channel) => channel.name));
+                                    if (onChannelClose != null) onChannelClose!();
+                                  }
+                                },
+                                tooltip: 'Close current channel',
                               ),
                             if (channel != null)
                               Container(

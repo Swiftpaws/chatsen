@@ -366,6 +366,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
                   return HomeDrawer(
                     client: client,
                     channel: currentChannel,
+                    onChannelClose: () => setState(() {}),
                   );
                 },
               ),
@@ -407,6 +408,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver impleme
                                       isScrollable: true,
                                       dividerColor: Colors.transparent,
                                       dividerHeight: 0,
+                                      indicatorSize: TabBarIndicatorSize.label,
+                                      indicator: UnderlineTabIndicator(
+                                        borderSide: BorderSide(
+                                          width: 2.0,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      labelColor: Theme.of(context).colorScheme.onSurface,
+                                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                                       tabs: client.channels
                                           .map(
                                             (channel) => HomeTab(

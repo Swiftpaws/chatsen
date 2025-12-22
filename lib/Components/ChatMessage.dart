@@ -507,10 +507,10 @@ class ChatMessage extends StatelessWidget {
                             if (snippet.length > 120)
                               snippet = '${snippet.substring(0, 120)}…';
                             if (snippet.isEmpty) snippet = '…';
-                            return '↪ Reply to $who: $snippet\n';
+                            return '↪Reply to $who: $snippet\n';
                           }(),
                           style: TextStyle(
-                            fontStyle: FontStyle.italic,
+                            fontStyle: FontStyle.normal,
                             shadows: shadows,
                             color: Colors.grey[400],
                             ),

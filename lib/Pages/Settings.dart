@@ -418,7 +418,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 SettingsEntry(
                   category: 'About',
                   // title: 'Check for updates',
-                  title: 'About Chatsen',
+                  title: 'About Vibesen',
                   description: 'Version',
                   builder: (context, category, title, description) => FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
